@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Playwrite+DE+SAS:wght@100..400&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #eee, #ddd, #eee, #eee 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 5px;
+  color: transparent;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% - 0;
+  }
+
+  100% {
+    background-position: 100% 0;
+
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  /* background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif; */
+  background: #ffffff;
+}
+
+.message-card {
+  /* box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); */
+  animation: fadeIn 0.3s ease-in-out;
+  z-index: 4;
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
