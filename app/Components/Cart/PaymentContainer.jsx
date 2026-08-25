@@ -168,7 +168,7 @@ const PaymentContainer = () => {
                                             <div className="flex flex-col w-full border-b border-[#333]" key={`cartitem-${ct.id}`}>
                                                 <div className="w-full h-auto flex gap-2.5 py-1">
                                                     <div className={`w-[60] h-[60] max-h-30 max-[500px]:w-[25%] relative`}>
-                                                        <img src={`http://127.0.0.1:8000${ct.product.image}`} width={100} height={100} alt={ct.product.name} className="w-full h-full rounded-xl" unoptimized />
+                                                        <img src={`${ct.product.image}`} width={100} height={100} alt={ct.product.name} className="w-full h-full rounded-xl" unoptimized />
                                                     </div>
 
                                                     <div className='w-[87%] max-[500px]:w-[75%]'>

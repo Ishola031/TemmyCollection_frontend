@@ -1,9 +1,11 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: `${process.env.NEXT_PUBLIC_API_URL}/`,
+    baseURL: 'http://localhost:8000',
     withCredentials: true,
 })
+
+// print(process.env.NEXT_PUBLIC_API_URL)
 
 console.log("API BASE URL:", api.defaults.baseURL)
 
@@ -22,7 +24,7 @@ api.interceptors.response.use(
             originalRequest._retry = true;
             try {
                 await axios.post(
-                    'http://localhost:8000/api/a/token/refresh/', {}, {
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/a/token/refresh/`, {}, {
                     withCredentials: true,
                 }
                 );

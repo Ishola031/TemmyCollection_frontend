@@ -5,7 +5,7 @@ const CollectionProduct = ({ pr }) => {
     return (
         <div className="w-[25%] min-w-[25%] h-auto p-3 relative max-[700px]:min-w-[33.3%] max-[500px]:min-w-[50%] max-[500px]:px-1 max-[340px]:min-w-full">
             <div className="w-full h-40 rounded-xl mb-0.5">
-                <Link href={`/store/${pr.slug}`}><img src={`http://127.0.0.1:8000${pr?.image}`} width={100} height={100} alt={`${pr.name}`} className="w-full h-full object-contain rounded-xl" unoptimized={true} /></Link>
+                <Link href={`/store/${pr.slug}`}><img src={`${pr?.image}`} width={100} height={100} alt={`${pr.name}`} className="w-full h-full object-contain rounded-xl" /></Link>
             </div>
             <h2 className="text-[14px] pt-2 tracking-[1px] line-clamp-1 overflow-hidden text-ellipsis" style={{ lineHeight: '16px' }}>{pr.name}</h2>
             <div className="">

@@ -168,7 +168,7 @@ const page = () => {
                                                 <div key={`orderItem_${orderItem.id}`} className='flex items-center py-1 border-b-2 border-[#eee]'>
                                                     <div className='w-[65%] flex items-center gap-2 px-2'>
                                                         <div className="w-[20%] h-10">
-                                                            <Image src={`http://127.0.0.1:8000${orderItem?.product?.image}`} width={100} height={100} alt={orderItem.product.name} className="w-full h-full object-contain" unoptimized />
+                                                            <Image src={`${orderItem?.product?.image}`} width={100} height={100} alt={orderItem.product.name} className="w-full h-full object-contain" unoptimized />
                                                         </div>
                                                         <h4 className='text-[15px] line-clamp-1 overflow-hidden text-ellipsis font-medium'>{orderItem.product.name}</h4>
                                                     </div>

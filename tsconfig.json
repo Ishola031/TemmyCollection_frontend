@@ -37,6 +37,7 @@
     "**/*.mts",
     "app/page.jsx",
     "app/Components/Navbar.jsx",
+    "app/hook/notifications.js",
   ],
   "exclude": [
     "node_modules"

@@ -262,7 +262,7 @@ const ProductDetail = ({ slug }) => {
     useEffect(() => {
         // console.log('cart', cart)
         // console.log('', reviews)
-        // console.log('', data)
+        console.log('', data)
 
     }, [selectedVariant, inCartItem, product, reviews])
 
@@ -379,7 +379,7 @@ const ProductDetail = ({ slug }) => {
                                 <div className="w-full h-75">
                                     {/* <Image src={`${product?.image}`} width={100} height={100} alt="" className="w-full h-full object-contain" unoptimized /> */}
                                     <img
-                                        src={`http://127.0.0.1:8000${product?.image}` || null}
+                                        src={`${product?.image}` || null}
                                         alt={product?.name || 'Product Image'}
                                         width={100}
                                         height={100}

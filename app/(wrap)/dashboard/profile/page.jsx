@@ -19,6 +19,7 @@ const page = () => {
     const [editProfile, setEditProfile] = useState(false)
     const { isAuthenticated } = useContext(AuthContext);
     const { data } = useUserDetail(isAuthenticated);
+    console.log(isAuthenticated)
     useEffect(() => {
         setProfile(vl => ({ "email": data?.email, "userName": data?.username, "firstName": data?.first_name, "lastName": data?.last_name, "phoneNumber": data?.phone_number }))
     }, [data])

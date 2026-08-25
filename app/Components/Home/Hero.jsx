@@ -2,14 +2,15 @@
 import React from 'react'
 import { useContext } from "react";
 import { AuthContext } from "../IsAuth";
-
+import { useUserDetail } from '../../hook/useUserDetails'
 const Hero = () => {
     const { isAuthenticated, isLoading, logout } = useContext(AuthContext)
+    const { data } = useUserDetail(isAuthenticated);
     return (
         <section className="w-full h-130 flex pt-38 py-4 px-10 lg:px-15 min-px-3 max-[740px]:px-5">
             <div className="w-[50%] h-full flex flex-col items-start justify-center max-[860px]:w-full">
-                {isAuthenticated ? (
-                    <h4 className="mb-1 text-[20px] text-[#333]">Welcome, <span className="text-blue-600"></span></h4>
+                {isAuthenticated && data?.first_name ? (
+                    <h4 className="mb-1 text-[20px] text-[#333]">Welcome, <span className="text-blue-600">{data?.first_name}</span></h4>
                 ) : (
                     <h4 className="mb-1 text-[20px] text-[#333]">Temmy<span className="text-blue-600"> Collection</span></h4>
                 )}

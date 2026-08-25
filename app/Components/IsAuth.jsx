@@ -1,60 +1,56 @@
 'use client';
-import React, { createContext, useEffect, useState } from 'react'
+import React, { createContext, useEffect, useState } from 'react';
 import api from '../api/api';
-import useSWR from 'swr';
-// import { useRouter } from 'next/router';
-const AuthContext = createContext()
+
+const AuthContext = createContext();
+
 const IsAuth = ({ children }) => {
-    const [user, setUser] = useState({})
-    // const router = useRouter();
-    const [isLoadings, setIsLoadings] = useState(true)
-    const [cart, setCart] = useState({})
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [user, setUser] = useState({});
+    const [isLoadings, setIsLoadings] = useState(true);
+    const [cart, setCart] = useState({});
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
         const fetchauth = async () => {
             try {
-                setIsLoadings(true)
-                const response = await api.post(
-                    '/api/a/isauthenticated/', {}, {
-                    withCredentials: true,
+                setIsLoadings(true);
+                // Using GET or POST with withCredentials: true enabled in api.js
+                const response = await api.post('/api/a/isauthenticated/');
+
+                setIsAuthenticated(Boolean(response.data.isAuthenticated));
+                if (response.data.user) {
+                    setUser(response.data.user);
                 }
-                );
-                setIsAuthenticated(response.data.isAuthenticated)
-                // setUser(response.data.user)
             } catch (error) {
-                console.error(error)
+                console.error('Authentication check failed:', error);
+                setIsAuthenticated(false);
             } finally {
-                setIsLoadings(false)
+                setIsLoadings(false);
             }
         };
 
         fetchauth();
-    }, [])
+    }, []);
 
     const logout = async () => {
         try {
-            setIsLoading(true)
-            const response = await api.post(
-                '/api/a/logout/',
-            );
-            console.log(response.data)
-            setIsAuthenticated(false)
-            setUser({})
-            // router.reload()
+            setIsLoadings(true); // Fixed state variable name
+            await api.post('/api/a/logout/');
+            setIsAuthenticated(false);
+            setUser({});
         } catch (error) {
-            console.error(error)
+            console.error('Logout error:', error);
         } finally {
-            setIsLoading(false)
+            setIsLoadings(false);
         }
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isLoadings, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, isLoadings, logout }}>
             {children}
         </AuthContext.Provider>
-    )
-}
+    );
+};
 
-export default IsAuth
-export { AuthContext }
+export default IsAuth;
+export { AuthContext };

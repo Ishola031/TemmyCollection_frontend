@@ -98,7 +98,7 @@ const CartContainer = () => {
                                             <div className="flex flex-col w-full pb-2 border-b border-[#333]" key={`cartitem-${ct.id}`}>
                                                 <div className="w-full h-auto flex gap-2.5">
                                                     <div className={`w-[100] h-[100] max-h-30 max-[500px]:w-[25%] relative`}>
-                                                        <Image src={`http://127.0.0.1:8000${ct.product.image}`} width={100} height={100} alt={ct.product.name} className="w-full h-full rounded-xl" unoptimized />
+                                                        <Image src={`${ct.product.image}`} width={100} height={100} alt={ct.product.name} className="w-full h-full rounded-xl" unoptimized />
                                                         {ct.product.discount > 0 && (
                                                             <div className={`${!isactive ? ('bg-[#d6d0d0]') : ('bg-amber-400')} absolute hidden top-0 right-0 text-[13px] py-0.5 px-1.5 text-white max-[500px]:flex`}>-{ct.product.discount}%</div>
                                                         )}

@@ -28,7 +28,6 @@ const ProductCollection = () => {
         }
     }, [collections]);
 
-    console.log(collections)
     return (
         isLoading ? (
             loop.map(lop => {
