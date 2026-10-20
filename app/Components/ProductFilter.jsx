@@ -1,22 +1,22 @@
 "use client"
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { IoMdClose } from "react-icons/io";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import useSWR from 'swr';
 import { AiOutlineMenu } from "react-icons/ai";
 import { FaRegHeart, FaHeart } from "react-icons/fa";
 import { IoMdArrowBack } from 'react-icons/io';
-import axios from 'axios'
 import { AuthContext } from './IsAuth';
-import api from '../api/api';
 import Message from './Message';
 import ProductCollectionContainer from "../Components/Include/ProductCollectionContainer"
-import { useCategoryFilter } from '../hook/useCategoryFilter';
 import { useAddToCartItem, useCart, useRemoveCartItem } from '../hook/useCart';
 import { productLikeApi, useProductLike } from '../hook/useProductLike';
-import { useProduct } from '../hook/useproducts';
+import { useProductFilter } from '../hook/useProductFilter';
+import { ProductFilterPanel, ProductSort } from "./ProductFilterPanel";
+
+
+
 
 const ProductFilter = ({ slug }) => {
     const searchParams = useSearchParams();
@@ -28,21 +28,30 @@ const ProductFilter = ({ slug }) => {
     const [addLoading, setAddLoading] = useState({});
     const sidebarRef = useRef(null)
     const { isAuthenticated } = useContext(AuthContext)
-    const { data: filters, isLoading: categoryFilterLoading } = useCategoryFilter(slug || null)
     const { data: cart, isLoading: loadingCart } = useCart(isAuthenticated)
     const [filterForm, setFilterForm] = useState({
         "category": slug,
         "colors": [],
         "sizes": [],
         "brands": [],
+        "minPrice": "",
+        "maxPrice": "",
+        "minDiscount": "",
+        "rating": "",
+        "inStock": 'true',
+        "sort": "popularity",
     });
+    const { data: filters, isLoading: categoryFilterLoading } = useProductFilter(filterForm || null)
     const [showCategoryChild, setShowCategoryChild] = useState({});
     const [error, setError] = useState(null);
+    const [price, setPrice] = useState({
+        minPrice: 0,
+        maxPrice: 0,
+    });
     const addcartfetch = useAddToCartItem(isAuthenticated, setMessage);
     const productLikeFetch = useProductLike();
     const handleCartItemDecrement = useRemoveCartItem(isAuthenticated);
-    const { data: products, isLoading: loadingProduct } = useProduct(filterForm)
-
+    const products = filters?.products?.results
 
     useEffect(() => {
         const parsedFilters = {
@@ -84,15 +93,6 @@ const ProductFilter = ({ slug }) => {
     const updateURL = () => {
         const params = new URLSearchParams();
 
-        // 1. Explicitly handle 'category' -> 'q' FIRST
-        // if (filterForm.category && filterForm.category.length > 0) {
-        //     if (Array.isArray(filterForm.category)) {
-        //         params.set("q", filterForm.category[0]); // Take first item if array
-        //     } else {
-        //         params.set("q", filterForm.category);
-        //     }
-        // }
-
         // 2. Loop over everything ELSE
         Object.entries(filterForm).forEach(([key, value]) => {
             // STRICTLY SKIP category so it isn't processed/overwritten again below
@@ -118,17 +118,11 @@ const ProductFilter = ({ slug }) => {
         window.history.replaceState({}, "", finalURL);
     };
 
-    // const updateURL = () => { }
-
     const toggleCategoryChild = (filter) => {
         setShowCategoryChild(prev => ({
             ...prev,
             [`${filter}`]: !prev[`${filter}`]
         }));
-    };
-
-    const isChecked = (category, value) => {
-        return filterForm[category] ? filterForm[category].includes(value) : false;
     };
 
     const toggleFilter = (key, value) => {
@@ -162,18 +156,11 @@ const ProductFilter = ({ slug }) => {
     // console.log(p)
     useEffect(() => {
         updateURL()
-        const updateProduct = async () => {
-            if (!categoryFilterLoading) {
-
-                // setProducts()
-            }
-        }
-        updateProduct();
     }, [filterForm, categoryFilterLoading]);
 
     // PREVENT SCROLLING WHEN VIRIATION IS OPEN
     useEffect(() => {
-        if (showVariation) {
+        if (showVariation || showfilter) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
@@ -183,7 +170,7 @@ const ProductFilter = ({ slug }) => {
         return () => {
             document.body.style.overflow = 'unset';
         };
-    }, [showVariation]);
+    }, [showVariation, showfilter]);
 
     // HIDE VARIATION WHEN USER CLICK OUTSIDE THE VARIATION CONTAINER
     useEffect(() => {
@@ -265,13 +252,14 @@ const ProductFilter = ({ slug }) => {
         // If using a state updater like toggleFilter or setFilterForm:
         setFilterForm((prev) => ({
             ...prev,
-            minPrice: priceRange.minPrice,
-            maxPrice: priceRange.maxPrice,
+            minPrice: price.minPrice,
+            maxPrice: price.maxPrice,
         }));
-
-        // Trigger your router update or refetch function here if applicable
-        // e.g., fetchProducts({ ...filterForm, ...priceRange });
     };
+
+    useEffect(()=> {
+        setPrice(v=> ({...v, minPrice:filterForm.minPrice, maxPrice:filterForm.maxPrice}))
+    },[])
 
     // 4. Handle discount percentage select/toggle
     const handleDiscountChange = (discount) => {
@@ -284,51 +272,63 @@ const ProductFilter = ({ slug }) => {
     return (
         <>
             <Message message={message} setError={setMessage} />
-
-            <div className={`max-[760px]:fixed max-[760px]:inset-0 max-[760px]:bg-white max-[760px]:z-50 max-[760px]:flex-col hidden ${showfilter ? 'max-[760px]:flex' : ''}`}>
+            
+            <div className={`max-[760px]:fixed max-[760px]:inset-0 max-[760px]:bg-white max-[760px]:z-900 max-[760px]:flex-col hidden ${showfilter ? 'max-[760px]:flex' : ''}`}>
+    
                 {/* Mobile Header */}
                 <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-3">
-                        <button type="button" onClick={() => setSHowFilter((vl) => !vl)} className="p-1 -ml-1 text-gray-700 hover:text-black rounded-full transition-colors active:bg-gray-100" aria-label="Close filters">
+                        <button 
+                            type="button" 
+                            onClick={() => setSHowFilter((vl) => !vl)} 
+                            className="p-1 -ml-1 text-gray-700 hover:text-black rounded-full transition-colors active:bg-gray-100" 
+                            aria-label="Close filters"
+                        >
                             <IoMdArrowBack className="text-2xl" />
                         </button>
                         <h3 className="font-bold text-lg text-gray-900 tracking-tight">Filters</h3>
                     </div>
 
-                    <button type="button" onClick={() => {
-                        handlePriceChange('minPrice', ''); handlePriceChange('maxPrice', '');
-                        if (typeof setFilterForm === 'function') {
-                            setFilterForm((prev) => ({
-                                ...prev,
-                                brands: [],
-                                colors: [],
-                                sizes: [],
-                                discount: null,
-                            }));
-                        }
-                    }} className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider">
+                    <button 
+                        type="button" 
+                        onClick={() => {
+                            handlePriceChange('minPrice', ''); 
+                            handlePriceChange('maxPrice', '');
+                            if (typeof setFilterForm === 'function') {
+                                setFilterForm((prev) => ({
+                                    ...prev,
+                                    brands: [],
+                                    colors: [],
+                                    sizes: [],
+                                    discount: null,
+                                }));
+                            }
+                        }} 
+                        className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider"
+                    >
                         Clear All
                     </button>
                 </div>
 
                 {/* Scrollable Filter Options */}
                 <div className="flex-1 overflow-y-auto px-4 divide-y divide-gray-100 pb-24">
+                    
                     {/* CATEGORY SECTION */}
                     <div className="py-3.5">
                         <button type="button" className="w-full flex justify-between items-center text-left py-1 group" onClick={() => toggleCategoryChild('category')}>
                             <div>
                                 <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Category</p>
                                 <p className="text-xs text-gray-500 font-medium">
-                                    {filters?.category?.name || 'All Categories'}
+                                    {filters?.filters?.category?.name || 'All Categories'}
                                 </p>
                             </div>
                             <AiOutlineMenu className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${showCategoryChild['category'] ? 'rotate-90 text-amber-500 font-bold' : ''}`} />
                         </button>
 
                         <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategoryChild['category'] ? 'max-h-96 pt-3 pb-1' : 'max-h-0'}`}>
-                            {filters?.subcategories?.length > 0 ? (
+                            {filters?.filters?.subcategories?.length > 0 ? (
                                 <ul className="space-y-2 pl-1">
-                                    {filters?.subcategories.map((sub) => (
+                                    {filters.filters.subcategories.map((sub) => (
                                         <li key={`sub-${sub.id}`} onClick={() => handleRouter(sub.slug)} className="flex items-center justify-between text-xs text-gray-700 py-1.5 px-2.5 rounded-lg hover:bg-gray-50 cursor-pointer font-medium transition-colors">
                                             <span>{sub.name}</span>
                                             <span className="text-gray-400 text-[10px]">→</span>
@@ -336,14 +336,97 @@ const ProductFilter = ({ slug }) => {
                                     ))}
                                 </ul>
                             ) : (
-                                filters?.category?.id && (
+                                filters?.filters?.category?.id && (
                                     <div className="text-xs py-1.5 px-2.5 bg-amber-50 rounded-lg text-amber-800 font-semibold border border-amber-200/60">
-                                        {filters?.category?.name}
+                                        {filters.filters.category.name}
                                     </div>
                                 )
                             )}
                         </div>
                     </div>
+
+                    {/* MULTI-SELECT FILTER SECTIONS (Brand, Color, Size) */}
+                    {[
+                        { key: 'brand', label: 'Brand', data: filters?.filters?.brands, formKey: 'brands' },
+                        { key: 'color', label: 'Color', data: filters?.filters?.colors, formKey: 'colors' },
+                        { key: 'size', label: 'Size', data: filters?.filters?.sizes, formKey: 'sizes' },
+                    ].map(({ key, label, data, formKey }) => {
+                        if (!data?.length) return null;
+                        const isOpen = showCategoryChild[key];
+                        const selectedCount = filterForm[formKey]?.length || 0;
+
+                        return (
+                            <div key={key} className="py-3.5">
+                                <button
+                                    type="button"
+                                    className="w-full flex justify-between items-center text-left py-1 group"
+                                    onClick={() => toggleCategoryChild(key)}
+                                >
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">{label}</p>
+                                        <p className="text-xs text-gray-500 font-medium">
+                                            {selectedCount > 0 ? `${selectedCount} selected` : `All ${label}s`}
+                                        </p>
+                                    </div>
+                                    <AiOutlineMenu className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${isOpen ? 'rotate-90 text-amber-500 font-bold' : ''}`} />
+                                </button>
+
+                                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-60 pt-3' : 'max-h-0'}`}>
+                                    <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
+                                        {data.map((item) => {
+                                            const itemValue = `${item.slug || item.name}`;
+                                            const isChecked = filterForm[formKey].includes(itemValue);
+                                            
+                                            return (
+                                                <label
+                                                    key={`${key}-${item.id}`}
+                                                    htmlFor={`${key}-m-${item.id}`}
+                                                    className="flex items-center gap-3 py-1 cursor-pointer group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        id={`${key}-m-${item.id}`}
+                                                        name={key}
+                                                        checked={isChecked}
+                                                        onChange={() => toggleFilter(formKey, itemValue)}
+                                                        className="w-4 h-4 accent-[#333] rounded border-gray-300 cursor-pointer"
+                                                    />
+                                                    <span className="text-xs font-medium text-gray-700 group-hover:text-black">
+                                                        {item.name}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* DYNAMIC ATTRIBUTES */}
+                    {(filters?.filters?.attributes || []).map((attribute) => (
+                        <div key={attribute.slug} className="w-full pb-3 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-semibold uppercase mb-2">{attribute.attribute}</h4>
+                            <div className="space-y-1">
+                                {attribute.options.map((option) => {
+                                    const key = "attribute_" + attribute.slug;
+                                    const selected = Array.isArray(filterForm[key]) ? filterForm[key] : [];
+                                    
+                                    return (
+                                        <label key={option.id} className="flex gap-2 items-center py-1 text-sm cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selected.includes(option.value)} 
+                                                onChange={() => toggleFilter(key, option.value)} 
+                                                className="w-4 h-4 accent-amber-500 rounded border-gray-300 cursor-pointer"
+                                            />
+                                            <span className="text-xs text-gray-700">{option.value}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
 
                     {/* PRICE FILTER SECTION */}
                     <div className="py-3.5">
@@ -357,8 +440,8 @@ const ProductFilter = ({ slug }) => {
                                 <input
                                     type="number"
                                     placeholder="Min"
-                                    value={filterForm?.minPrice || ''}
-                                    onChange={(e) => handlePriceChange('minPrice', e.target.value)}
+                                    value={price?.minPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, minPrice: e.target.value}))}
                                     className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 transition-all font-medium"
                                 />
                             </div>
@@ -368,185 +451,68 @@ const ProductFilter = ({ slug }) => {
                                 <input
                                     type="number"
                                     placeholder="Max"
-                                    value={filterForm?.maxPrice || ''}
-                                    onChange={(e) => handlePriceChange('maxPrice', e.target.value)}
+                                    value={price?.maxPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, maxPrice: e.target.value}))}
                                     className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 transition-all font-medium"
                                 />
                             </div>
                         </div>
+                    </div>
 
-                        {/* Quick Range Presets */}
-                        <div className="flex flex-wrap gap-1.5">
-                            {[
-                                { label: 'Under ₦10k', min: 0, max: 10000 },
-                                { label: '₦10k - ₦50k', min: 10000, max: 50000 },
-                                { label: '₦50k - ₦100k', min: 50000, max: 100000 },
-                                { label: 'Above ₦100k', min: 100000, max: '' },
-                            ].map((preset, idx) => (
-                                <button
-                                    key={`preset-${idx}`}
-                                    type="button"
-                                    onClick={() => {
-                                        handlePriceChange('minPrice', preset.min);
-                                        handlePriceChange('maxPrice', preset.max);
-                                    }}
-                                    className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition-all ${filterForm?.minPrice === preset.min && filterForm?.maxPrice === preset.max
-                                        ? 'bg-amber-50 border-amber-500 text-amber-700 font-semibold'
-                                        : 'bg-gray-50 border-gray-200 text-gray-600'
-                                        }`}
-                                >
-                                    {preset.label}
-                                </button>
+                    {/* DISCOUNT PERCENTAGE FILTER */}
+                    <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">Discount Percentage</h4>
+                        <div className="flex flex-col gap-1.5">
+                            {[50, 40, 30, 20, 10].map((discount) => (
+                                <div className="flex gap-2 items-center" key={`discount-${discount}`}>
+                                    <input
+                                        type="radio"
+                                        id={`discount-${discount}`}
+                                        name="discountFilters"
+                                        checked={String(filterForm?.discount || "") === String(discount)}
+                                        onChange={() => handleDiscountChange(discount)}
+                                        className="w-4 h-4 accent-[#333] cursor-pointer"
+                                    />
+                                    <label htmlFor={`discount-${discount}`} className="text-xs text-gray-700 cursor-pointer font-medium">
+                                        {discount}% off or more
+                                    </label>
+                                </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* BRAND SECTION */}
-                    {filters?.brands?.length > 0 && (
-                        <div className="py-3.5">
-                            <button
-                                type="button"
-                                className="w-full flex justify-between items-center text-left py-1 group"
-                                onClick={() => toggleCategoryChild('brand')}
-                            >
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Brand</p>
-                                    <p className="text-xs text-gray-500 font-medium">
-                                        {filterForm.brands?.length > 0 ? `${filterForm.brands.length} selected` : 'All Brands'}
-                                    </p>
-                                </div>
-                                <AiOutlineMenu
-                                    className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${showCategoryChild['brand'] ? 'rotate-90 text-amber-500 font-bold' : ''
-                                        }`}
-                                />
-                            </button>
-
-                            <div
-                                className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategoryChild['brand'] ? 'max-h-60 pt-3' : 'max-h-0'
-                                    }`}
-                            >
-                                <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
-                                    {filters?.brands.map((br) => (
-                                        <label
-                                            key={`brand-${br.id}`}
-                                            htmlFor={`brand-m-${br.id}`}
-                                            className="flex items-center gap-3 py-1 cursor-pointer group"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                id={`brand-m-${br.id}`}
-                                                name="brand"
-                                                checked={filterForm.brands.includes(`${br.slug || br.name}`)}
-                                                onChange={() => toggleFilter('brands', `${br.slug || br.name}`)}
-                                                className="w-4 h-4 accent-amber-500 rounded border-gray-300 cursor-pointer"
-                                            />
-                                            <span className="text-xs font-medium text-gray-700 group-hover:text-black">
-                                                {br.name}
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                    {/* RATINGS & STOCK */}
+                    <div className="w-full pb-4 border-t border-gray-200 pt-3">
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">Customer Rating</h4>
+                        <div className="space-y-1">
+                            {[5, 4, 3, 2, 1].map((stars) => (
+                                <label key={stars} className="flex items-center gap-2 py-1 text-xs cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        name="ratings" 
+                                        checked={String(filterForm.rating || "") === String(stars)} 
+                                        onChange={() => setFilterForm((prev) => ({ ...prev, rating: String(prev.rating) === String(stars) ? "" : String(stars) }))} 
+                                        className="w-4 h-4 accent-[#333] cursor-pointer"
+                                    />
+                                    <span className="text-amber-500">{"★".repeat(stars)}<span className="text-gray-300">{"★".repeat(5-stars)}</span></span>
+                                    <span className="text-gray-600">& up</span>
+                                </label>
+                            ))}
                         </div>
-                    )}
 
-                    {/* COLOR SECTION */}
-                    {filters?.colors?.length > 0 && (
-                        <div className="py-3.5">
-                            <button
-                                type="button"
-                                className="w-full flex justify-between items-center text-left py-1 group"
-                                onClick={() => toggleCategoryChild('color')}
-                            >
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Color</p>
-                                    <p className="text-xs text-gray-500 font-medium">
-                                        {filterForm.colors?.length > 0 ? `${filterForm.colors.length} selected` : 'All Colors'}
-                                    </p>
-                                </div>
-                                <AiOutlineMenu
-                                    className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${showCategoryChild['color'] ? 'rotate-90 text-amber-500 font-bold' : ''
-                                        }`}
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <label className="flex items-center justify-between text-xs font-medium text-gray-700 cursor-pointer">
+                                <span>In stock only</span>
+                                <input 
+                                    type="checkbox" 
+                                    checked={filterForm.inStock === 'true'} 
+                                    onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? 'true' : 'false' }))} 
+                                    className="w-4 h-4 accent-[#333] rounded border-gray-300 cursor-pointer"
                                 />
-                            </button>
-
-                            <div
-                                className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategoryChild['color'] ? 'max-h-60 pt-3' : 'max-h-0'
-                                    }`}
-                            >
-                                <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
-                                    {filters?.colors.map((cl) => (
-                                        <label
-                                            key={`color-${cl.id}`}
-                                            htmlFor={`color-m-${cl.id}`}
-                                            className="flex items-center gap-3 py-1 cursor-pointer group"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                id={`color-m-${cl.id}`}
-                                                name="color"
-                                                checked={filterForm.colors.includes(`${cl.slug || cl.name}`)}
-                                                onChange={() => toggleFilter('colors', `${cl.slug || cl.name}`)}
-                                                className="w-4 h-4 accent-amber-500 rounded border-gray-300 cursor-pointer"
-                                            />
-                                            <span className="text-xs font-medium text-gray-700 group-hover:text-black">
-                                                {cl.name}
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                            </label>
                         </div>
-                    )}
+                    </div>
 
-                    {/* SIZE SECTION */}
-                    {filters?.sizes?.length > 0 && (
-                        <div className="py-3.5">
-                            <button
-                                type="button"
-                                className="w-full flex justify-between items-center text-left py-1 group"
-                                onClick={() => toggleCategoryChild('size')}
-                            >
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Size</p>
-                                    <p className="text-xs text-gray-500 font-medium">
-                                        {filterForm.sizes?.length > 0 ? `${filterForm.sizes.length} selected` : 'All Sizes'}
-                                    </p>
-                                </div>
-                                <AiOutlineMenu
-                                    className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${showCategoryChild['size'] ? 'rotate-90 text-amber-500 font-bold' : ''
-                                        }`}
-                                />
-                            </button>
-
-                            <div
-                                className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategoryChild['size'] ? 'max-h-60 pt-3' : 'max-h-0'
-                                    }`}
-                            >
-                                <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
-                                    {filters?.sizes.map((sz) => (
-                                        <label
-                                            key={`size-${sz.id}`}
-                                            htmlFor={`size-m-${sz.id}`}
-                                            className="flex items-center gap-3 py-1 cursor-pointer group"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                id={`size-m-${sz.id}`}
-                                                name="size"
-                                                checked={filterForm.sizes.includes(`${sz.slug || sz.name}`)}
-                                                onChange={() => toggleFilter('sizes', `${sz.slug || sz.name}`)}
-                                                className="w-4 h-4 accent-amber-500 rounded border-gray-300 cursor-pointer"
-                                            />
-                                            <span className="text-xs font-medium text-gray-700 group-hover:text-black">
-                                                {sz.name}
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Fixed Bottom Action Bar for Mobile */}
@@ -557,7 +523,7 @@ const ProductFilter = ({ slug }) => {
                             if (typeof applyPriceFilter === 'function') applyPriceFilter();
                             setSHowFilter(false);
                         }}
-                        className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md"
+                        className="w-full py-3 bg-[#333] hover:bg-[#333] active:scale-[0.99] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md"
                     >
                         Apply Filters
                     </button>
@@ -572,13 +538,12 @@ const ProductFilter = ({ slug }) => {
             </div>
 
             {/* SUBCATEGORIES */}
-            {filters?.subcategories?.length > 0 && (
+            {filters?.filters?.subcategories?.length > 0 && (
                 <section className="w-full h-auto flex px-10 lg:px-15 min-px-3 py-3 max-[740px]:px-5 ">
                     <div className="w-full h-full flex flex-col">
                         <div className="w-full h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px]">
-                            <h4 className=''>CALL TO ORDER 09069491320</h4>
-                            {/* <h4>Time Left: 00h : 00m: 10s</h4> */}
-                            {/* <Link href="">See All </Link> */}
+                            {/* <h4 className=''>CALL TO ORDER 09069491320</h4> */}
+                            <Link href="">See All </Link>
                         </div>
 
                         <div className="w-full h-full flex overflow-x-scroll gap-3 pt-1
@@ -588,7 +553,7 @@ const ProductFilter = ({ slug }) => {
                                         [&::-webkit-scrollbar-thumb]:rounded-full
                                         [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]
                                     ">
-                            {filters?.subcategories?.map(sb => {
+                            {filters?.filters?.subcategories?.map(sb => {
                                 return (
                                     <div key={`sb-${sb.id}`} className="w-[20%]  h-auto p-3 relative max-[700px]:min-w-[33.3%] max-[500px]:min-w-[50%] max-[500px]:px-1 max-[340px]:min-w-full">
                                         <div className="w-full h-25 rounded-xl mb-0.5">
@@ -604,68 +569,26 @@ const ProductFilter = ({ slug }) => {
             )}
 
             {/* COLLECTION */}
-            {/* {filters?.collections?.length > 0 && (
+            {filters?.collections?.length > 0 && (
                 filters?.collections?.map(col => {
                     return (
                         <ProductCollectionContainer key={`col-${col.id}`} col={col} />
                     )
                 })
-            )} */}
+            )}
 
-            {/* COLLECTION TOP DEALS */}
-            {/* <section className="w-full h-auto flex px-10 lg:px-15 min-px-3 py-3 max-[740px]:px-5 ">
-                <div className="w-full h-full flex flex-col">
-                    <div className="w-full h-full flex justify-between items-center bg-blue-600 py-2 px-3 text-white text-[13px]">
-                        <h4>Top Deals</h4>
-                        <h4>Time Left: 00h : 00m: 10s</h4>
+            {/* OFFIAL STORES */}
+            {filters?.filters?.brands?.length > 0 && (
+                <section className="w-full rounded-2xl px-10 lg:px-15 min-px-3 max-[740px]:px-5 my-3">
+        
+                    <div className="w-full h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px] mb-2">
+                        <h4 className='uppercase'>Official Stores</h4>
                         <Link href="">See All </Link>
                     </div>
 
-                    <div className="w-full h-full flex overflow-x-scroll 
-                                        [&::-webkit-scrollbar]:w-1
-                                        [&::-webkit-scrollbar-track]:bg-transparent 
-                                      [&::-webkit-scrollbar-thumb]:bg-gray-300 
-                                        [&::-webkit-scrollbar-thumb]:rounded-full
-                                        [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]
-                                    ">
-                        {col?.product?.map(pr => {
-                            return (
-                                <div key={`pr-${pr.id}`} className="w-[25%] min-w-[25%] h-auto p-3 relative max-[700px]:min-w-[33.3%] max-[500px]:min-w-[50%] max-[500px]:px-1 max-[340px]:min-w-full">
-                                    <div className="w-full h-45 rounded-xl mb-0.5">
-                                        <Link href={`/store/${pr.slug}`}><Image src={`http://127.0.0.1:8000${pr.image}`} width={100} height={100} alt={`${pr.name}`} className="w-full h-full object-contain rounded-xl" unoptimized /></Link>
-                                    </div>
-                                    <h2 className="text-[14px] pt-2 tracking-[1px] line-clamp-1 overflow-hidden text-ellipsis" style={{ lineHeight: '16px' }}>{pr.name}</h2>
-                                    <div className="">
-                                        {pr.discount > 0 ? (
-                                            <h2 className="text-[16px] flex items-center gap-1 font-semibold">N{(((100 - pr?.discount) / 100) * pr?.price).toLocaleString('en-NG')} <span className="text-[11px] font-normal"><del>N{pr.price.toLocaleString('en-NG')}</del></span></h2>
-                                        ) : (
-                                            <h2 className="text-[16px] font-semibold"><del>N</del>{pr.price.toLocaleString('en-NG')}</h2>
-                                        )}
-                                    </div>
-                                    {pr.discount > 0 && (
-                                        <div className="absolute top-4.5 right-2.5 bg-amber-300 text-[12px] py-1 px-1.5">
-                                            <h3>-{pr.discount}%</h3>
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            </section> */}
-
-            {/* OFFIAL STORES */}
-            {filters?.brands?.length > 0 && (
-                <section className="w-full rounded-2xl px-10 lg:px-15 min-px-3 max-[740px]:px-5 my-3">
-                    {/* Section Header */}
-                    <div className="w-full h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px] mb-2">
-                        <h4 className='uppercase'>Official Stores</h4>
-                        {/* <Link href="">See All </Link> */}
-                    </div>
-
-                    {/* Horizontal Brand Carousel */}
+                    
                     <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
-                        {filters.brands.map((br) => {
+                        {filters?.filters.brands.map((br) => {
                             const brandImageUrl = br?.image;
 
                             return (
@@ -674,7 +597,7 @@ const ProductFilter = ({ slug }) => {
                                     href={`/brand/${br?.slug || br?.id}`}
                                     className="group shrink-0 w-35.5 sm:w-35.5 bg-gray-50/80 hover:bg-amber-50/40 border border-gray-200/80 hover:border-amber-400 p-3 rounded-xl flex flex-col items-center justify-between transition-all duration-200 shadow-xs hover:shadow-md snap-start"
                                 >
-                                    {/* Brand Logo Container */}
+                                    
                                     <div className="w-full h-14 sm:h-16 relative flex items-center justify-center bg-white rounded-lg p-1.5 shadow-2xs group-hover:scale-105 transition-transform duration-200">
                                         <Image
                                             src={brandImageUrl}
@@ -686,7 +609,7 @@ const ProductFilter = ({ slug }) => {
                                         />
                                     </div>
 
-                                    {/* Brand Name */}
+                                    
                                     <h4 className="text-xs font-bold text-gray-800 text-center line-clamp-1 mt-2.5 group-hover:text-amber-700 transition-colors tracking-tight">
                                         {br?.name}
                                     </h4>
@@ -697,13 +620,11 @@ const ProductFilter = ({ slug }) => {
                 </section>
             )}
 
-            {/* SECTION */}
+            {/* FILTER & PRODUCTS */}
             <section className="w-full h-auto pb-10 pt-5 px-10 lg:px-15 min-px-3 max-[740px]:px-5">
                 <div className="w-full h-full flex gap-8 max-[760px]:flex-col">
-
                     {/* Sidebar Filters */}
-                    <div className="sticky self-start top-20 h-auto w-[25%] shadow-xl p-3 rounded-xl max-[870px]:w-[30%] max-[760px]:hidden">
-
+                    <div className="sticky top-20 h-auto w-[25%] shadow-xl p-3 rounded-xl max-[870px]:w-[30%] max-[760px]:hidden">
                         {/* Category Section */}
                         <div className="w-full h-auto pb-3">
                             {!categoryFilterLoading && <h4 className="text-[16px] font-semibold">CATEGORY</h4>}
@@ -718,10 +639,10 @@ const ProductFilter = ({ slug }) => {
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                 </ul>
-                            ) : filters?.subcategories ? (
+                            ) : filters?.filters?.subcategories ? (
                                 <ul className="pl-3 pt-1">
-                                    <li className="font-semibold cursor-pointer">{filters?.category?.name}</li>
-                                    {filters?.subcategories.map((sub) => (
+                                    <li className="font-semibold cursor-pointer">{filters?.filters?.category?.name}</li>
+                                    {filters?.filters?.subcategories.map((sub) => (
                                         <li
                                             key={`sub-${sub.id}`}
                                             className="pl-3 pt-1 cursor-pointer"
@@ -733,7 +654,7 @@ const ProductFilter = ({ slug }) => {
                                 </ul>
                             ) : (
                                 <ul className="pl-3 pt-1">
-                                    {filters?.category?.map((cat) => (
+                                    {filters?.filters?.category?.map((cat) => (
                                         <li key={`cat-${cat.id}`} className="cursor-pointer">{cat.name}</li>
                                     ))}
                                 </ul>
@@ -751,7 +672,7 @@ const ProductFilter = ({ slug }) => {
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                 </ul>
-                            ) : filters?.brands?.length > 0 && (
+                            ) : filters?.filters?.brands?.length > 0 && (
                                 <>
                                     <h4 className="text-[16px] font-semibold">BRAND</h4>
                                     <div className="flex items-center border border-[#333] rounded-xl p-1 mb-2">
@@ -759,7 +680,7 @@ const ProductFilter = ({ slug }) => {
                                         <input type="text" className="border-0 outline-0 w-[80%] text-[14px]" placeholder="Search brand..." />
                                     </div>
                                     <div>
-                                        {filters?.brands.map((br) => (
+                                        {filters?.filters?.brands.map((br) => (
                                             <div className="flex gap-1 items-center" key={`brand-${br.id}`}>
                                                 <input
                                                     type="checkbox"
@@ -776,6 +697,48 @@ const ProductFilter = ({ slug }) => {
                             )}
                         </div>
 
+                        {/* Size Section */}
+                        {!categoryFilterLoading && filters?.filters?.sizes?.length > 0 && (
+                            <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
+                                <h4 className="text-[16px] font-semibold">SIZE</h4>
+                                <div>
+                                    {filters?.filters?.sizes.map((sz) => (
+                                        <div className="flex gap-1.5 items-center" key={`size-${sz.id}`}>
+                                            <input
+                                                type="checkbox"
+                                                id={`size-${sz.id}`}
+                                                name="size"
+                                                checked={filterForm.sizes.includes(`${sz.slug}`)}
+                                                onChange={() => toggleFilter("sizes", `${sz.slug}`)}
+                                            />
+                                            <label htmlFor={`size-${sz.id}`} className="text-[14px] cursor-pointer">{sz.name}</label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Color Section */}
+                        {!categoryFilterLoading && filters?.filters?.colors?.length > 0 && (
+                            <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
+                                <h4 className="text-[16px] font-semibold">COLOR</h4>
+                                <div>
+                                    {filters?.filters?.colors.map((cl) => (
+                                        <div className="flex gap-1.5 items-center" key={`color-${cl.id}`}>
+                                            <input
+                                                type="checkbox"
+                                                id={`color-${cl.id}`}
+                                                name="color"
+                                                checked={filterForm.colors.includes(`${cl.slug}`)}
+                                                onChange={() => toggleFilter("colors", `${cl.slug}`)}
+                                            />
+                                            <label htmlFor={`color-${cl.id}`} className="text-[14px] cursor-pointer">{cl.name}</label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Price Range Filter (Jumia Style) */}
                         <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
                             <h4 className="text-[16px] font-semibold mb-2">PRICE (₦)</h4>
@@ -783,26 +746,37 @@ const ProductFilter = ({ slug }) => {
                                 <input
                                     type="number"
                                     placeholder="Min"
-                                    value={filterForm?.minPrice || ''}
-                                    onChange={(e) => handlePriceChange('minPrice', e.target.value)}
+                                    value={price?.minPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, minPrice: e.target.value}))}
                                     className="w-1/2 p-1.5 border border-gray-300 rounded-lg text-[14px] outline-none focus:border-black"
                                 />
                                 <span className="text-gray-500">-</span>
                                 <input
                                     type="number"
                                     placeholder="Max"
-                                    value={filterForm?.maxPrice || ''}
-                                    onChange={(e) => handlePriceChange('maxPrice', e.target.value)}
+                                    value={price?.maxPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, maxPrice: e.target.value}))}
                                     className="w-1/2 p-1.5 border border-gray-300 rounded-lg text-[14px] outline-none focus:border-black"
                                 />
                             </div>
-                            <button
-                                onClick={applyPriceFilter}
+                            <button onClick={applyPriceFilter}
                                 className="w-full py-1.5 bg-[#333] text-white text-[13px] font-semibold rounded-lg hover:bg-black transition-all"
                             >
                                 APPLY
                             </button>
                         </div>
+
+                        {/* ATTRIBUTES */}
+                        {(filters?.filters?.attributes || []).map((attribute) => <div key={attribute.slug} className="w-full pb-3 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-semibold uppercase">{attribute.attribute}</h4>
+                            {attribute.options.map((option) => {
+                                const key = "attribute_" + attribute.slug;
+                                const selected = Array.isArray(filterForm[key]) ? filterForm[key] : [];
+                                return <label key={option.id} className="flex gap-2 items-center py-1 text-sm">
+                                    <input type="checkbox" checked={selected.includes(option.value)} onChange={() => toggleFilter(key, option.value)} />{option.value}
+                                </label>;
+                            })}
+                        </div>)}
 
                         {/* Discount Percentage Filter (Jumia Style) */}
                         <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
@@ -814,7 +788,7 @@ const ProductFilter = ({ slug }) => {
                                             type="radio"
                                             id={`discount-${discount}`}
                                             name="discountFilter"
-                                            checked={filterForm?.discount === discount}
+                                            checked={String(filterForm?.discount || "") === String(discount)}
                                             onChange={() => handleDiscountChange(discount)}
                                             className="cursor-pointer"
                                         />
@@ -826,56 +800,20 @@ const ProductFilter = ({ slug }) => {
                             </div>
                         </div>
 
-                        {/* Size Section */}
-                        <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
-                            {!categoryFilterLoading && filters?.sizes?.length > 0 && (
-                                <>
-                                    <h4 className="text-[16px] font-semibold">SIZE</h4>
-                                    <div>
-                                        {filters?.sizes.map((sz) => (
-                                            <div className="flex gap-1.5 items-center" key={`size-${sz.id}`}>
-                                                <input
-                                                    type="checkbox"
-                                                    id={`size-${sz.id}`}
-                                                    name="size"
-                                                    checked={filterForm.sizes.includes(`${sz.slug}`)}
-                                                    onChange={() => toggleFilter("sizes", `${sz.slug}`)}
-                                                />
-                                                <label htmlFor={`size-${sz.id}`} className="text-[14px] cursor-pointer">{sz.name}</label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Color Section */}
-                        <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
-                            {!categoryFilterLoading && filters?.colors?.length > 0 && (
-                                <>
-                                    <h4 className="text-[16px] font-semibold">COLOR</h4>
-                                    <div>
-                                        {filters?.colors.map((cl) => (
-                                            <div className="flex gap-1.5 items-center" key={`color-${cl.id}`}>
-                                                <input
-                                                    type="checkbox"
-                                                    id={`color-${cl.id}`}
-                                                    name="color"
-                                                    checked={filterForm.colors.includes(`${cl.slug}`)}
-                                                    onChange={() => toggleFilter("colors", `${cl.slug}`)}
-                                                />
-                                                <label htmlFor={`color-${cl.id}`} className="text-[14px] cursor-pointer">{cl.name}</label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+                        {/* RATINGS */}
+                        <div className="w-full pb-4 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-semibold mb-2">CUSTOMER RATING</h4>
+                            {[5, 4, 3, 2, 1].map((stars) => <label key={stars} className="flex items-center gap-2 py-1 text-sm">
+                                <input type="radio" name="rating" checked={String(filterForm.rating || "") === String(stars)} onChange={() => setFilterForm((prev) => ({ ...prev, rating: String(prev.rating) === String(stars) ? "" : String(stars) }))} />
+                                <span className="text-amber-500">{"★".repeat(stars)}<span className="text-gray-300">{"★".repeat(5-stars)}</span></span><span>& up</span>
+                            </label>)}
+                            {/* <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.inStock === "true"} onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? "true" : "" }))} /></label> */}
+                            <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.inStock === 'true'} onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? 'true' : 'false' }))} /></label>
                         </div>
                     </div>
 
                     {/* Products Area */}
-                    <div className="w-[75%] h-auto flex flex-col max-[870px]:w-[70%] max-[760px]:w-full max-[760px]:pt-5">
-
+                    <div className="relative w-[75%] h-auto flex flex-col max-[870px]:w-[70%] max-[760px]:w-full max-[760px]:pt-5">
                         {/* Top Header & Active Filters Bar */}
                         <div className="flex items-center justify-between bg-white z-10 pb-4 border-b border-gray-100 max-[760px]:w-full">
                             <div>
@@ -890,18 +828,22 @@ const ProductFilter = ({ slug }) => {
                             {/* Sort Controls */}
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:inline">Sort by:</span>
-                                <select className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-lg font-medium p-2 pr-8 outline-none focus:border-gray-400 transition-colors cursor-pointer">
-                                    <option value="popular">Most Popular</option>
+                                <select className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-lg font-medium p-2 pr-8 outline-none focus:border-gray-400 transition-colors cursor-pointer"
+                                    value={filterForm.sort || "popularity"} onChange={(e) => setFilterForm((prev) => ({ ...prev, sort: e.target.value }))}
+                                >
+                                    <option value="popularity">Popularity</option>
                                     <option value="newest">Newest Arrivals</option>
-                                    <option value="price-low">Price: Low to High</option>
-                                    <option value="price-high">Price: High to Low</option>
+                                    <option value="price_asc">Price: Low to High</option>
+                                    <option value="price_desc">Price: High to Low</option>
+                                    <option value="top_rating">Top Rated</option>
+                                    <option value="big_discount">Biggest Discount</option>
                                 </select>
                             </div>
                         </div>
 
                         {/* Product Grid */}
                         <div className="w-full grid grid-cols-4 pt-6 max-[1280px]:grid-cols-3 max-[970px]:grid-cols-2 max-[480px]:grid-cols-1 gap-5">
-                            {loadingProduct ? (
+                            {categoryFilterLoading ? (
                                 /* Skeleton Loading Cards */
                                 [1, 2, 3, 4, 5, 6].map((i) => (
                                     <div key={`skel-${i}`} className="flex flex-col bg-gray-50/50 rounded-2xl p-3 border border-gray-100 animate-pulse">
@@ -1031,10 +973,18 @@ const ProductFilter = ({ slug }) => {
                                 })
                             )}
                         </div>
+                        {/* <button className='fixed bottom-5 text-12 cursor-pointer bg-[#333] py-1 px-5 w-30 rounded-xl text-white hidden max-[760px]:block'>filter</button> */}
+                        <button className="sticky bottom-5 left-1/2 -translate-x-1/2 text-[13px] cursor-pointer bg-[#333] py-1.5 px-3 w-25 rounded-xl text-white hidden max-[760px]:block z-90"
+                         onClick={()=> setSHowFilter(true)}
+                        >
+                            filter
+                        </button>
                     </div>
+
                 </div>
             </section>
 
+            {/* VARIATIONS */}
             <div className={`${showVariation ? "fixed inset-0 z-700 opacity-100 pointer-events-auto" : "hidden opacity-0 pointer-events-none"} transition-opacity duration-300 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4`}>
                 <div ref={sidebarRef} className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all duration-300 scale-100">
                     {/* Header */}

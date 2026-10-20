@@ -1,12 +1,19 @@
 'use client'
+
 import { useRouter } from 'next/navigation'
-import React, { useContext, useEffect, useState } from 'react'
-import { AuthContext } from '../../../Components/IsAuth'
+import React, { useEffect, useState } from 'react'
 import LoadingContainer from '../../../Components/LoadingContainer'
 import Message from '../../../Components/Message'
+import {
+    FiArrowLeft,
+    FiMail,
+    FiRefreshCw,
+    FiShield,
+} from 'react-icons/fi'
 
 const Page = () => {
     const router = useRouter();
+
     const [loading, setLoading] = useState(false);
     const [seconds, setSeconds] = useState(60);
     const [canResend, setCanResend] = useState(false);
@@ -17,16 +24,21 @@ const Page = () => {
         code: "",
     });
 
-    // Hydrate state from localStorage safely after mount
-
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedEmail = localStorage.getItem('email');
+
             if (storedEmail) {
                 try {
-                    setForm(f => ({ ...f, email: JSON.parse(storedEmail) }));
+                    setForm(f => ({
+                        ...f,
+                        email: JSON.parse(storedEmail)
+                    }));
                 } catch {
-                    setForm(f => ({ ...f, email: storedEmail }));
+                    setForm(f => ({
+                        ...f,
+                        email: storedEmail
+                    }));
                 }
             } else {
                 router.push('/signup');
@@ -34,7 +46,6 @@ const Page = () => {
         }
     }, [router]);
 
-    // Timer countdown loop
     useEffect(() => {
         if (seconds <= 0) {
             setCanResend(true);
@@ -48,7 +59,6 @@ const Page = () => {
         return () => clearInterval(timer);
     }, [seconds]);
 
-    // Check resend status once email is populated
     useEffect(() => {
         if (!form.email) return;
 
@@ -57,11 +67,13 @@ const Page = () => {
                 const res = await fetch(
                     `${process.env.NEXT_PUBLIC_API_URL}/api/a/resend_status/?email=${encodeURIComponent(form.email)}`
                 );
+
                 const data = await res.json();
 
                 if (data?.error) {
                     setError(data.error);
                 }
+
                 if (data?.can_resend === false) {
                     setCanResend(false);
                     setSeconds(data.remaining);
@@ -79,15 +91,20 @@ const Page = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         try {
             setLoading(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/a/user/register/`, {
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(form)
-            });
+
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/a/user/register/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(form)
+                }
+            );
 
             const data = await res.json();
 
@@ -95,11 +112,17 @@ const Page = () => {
                 localStorage.removeItem('email');
                 router.push('/');
             } else {
-                setError(data.message || "Invalid verification code.");
+                setError(
+                    data.message ||
+                    "Invalid verification code."
+                );
             }
         } catch (err) {
             console.error(err);
-            setError("Network or server error. Please try again later.");
+
+            setError(
+                "Network or server error. Please try again later."
+            );
         } finally {
             setLoading(false);
         }
@@ -110,16 +133,19 @@ const Page = () => {
 
         try {
             setLoading(true);
+
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/a/reverifyemail/`, {
-                method: 'POST',
-                headers: {
-                    "Content-Type": 'application/json',
-                },
-                body: JSON.stringify({
-                    email: form.email,
-                })
-            });
+                `${process.env.NEXT_PUBLIC_API_URL}/api/a/reverifyemail/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: form.email,
+                    })
+                }
+            );
 
             const data = await res.json();
 
@@ -127,11 +153,17 @@ const Page = () => {
                 setSeconds(data.remaining || 60);
                 setCanResend(false);
             } else {
-                setError(data.message || "Unable to resend OTP.");
+                setError(
+                    data.message ||
+                    "Unable to resend OTP."
+                );
             }
         } catch (err) {
             console.error(err);
-            setError("Error resending code. Check your connection.");
+
+            setError(
+                "Error resending code. Check your connection."
+            );
         } finally {
             setLoading(false);
         }
@@ -139,48 +171,139 @@ const Page = () => {
 
     return (
         <>
-            <Message message={error} setError={setError} />
-            <section className="w-full h-screen pt-18 px-17.5 pb-5 max-[740px]:px-5 flex justify-center items-center">
-                <form onSubmit={handleSubmit} className="w-auto h-auto p-10 bg-white rounded-xl">
-                    <h2 className="text-[#333] text-center text-[20px] pb-1">Sign Up</h2>
-                    <p className='w-85 text-[15px] text-[#555] mb-2'>
-                        To verify your email, we've sent a One Time Password (OTP) to <span className="font-semibold text-black">{form.email}</span>
-                    </p>
-                    <p
-                        className='text-blue-500 pb-2 text-center cursor-pointer text-sm hover:underline'
-                        onClick={() => router.push("/signup")}
-                    >
-                        Change email
-                    </p>
+            <Message
+                message={error}
+                setError={setError}
+            />
 
-                    <div className="relative w-85 h-10 mt-2.5 rounded-xl bg-transparent flex border border-[#333] mb-1">
-                        <input
-                            type="number"
-                            name="code"
-                            id="code"
-                            required
-                            value={form.code}
-                            className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9"
-                            onChange={(e) => setForm(f => ({ ...f, code: e.target.value }))}
-                        />
-                        <label htmlFor='code' className="absolute top-2 left-2 text-[#333] text-[0.9rem] peer-focus:-top-4.5 peer-valid:-top-4.5 transition-all duration-500 peer-focus:text-[0.8rem] peer-valid:text-[0.8rem]">Code</label>
+            <section className="min-h-screen w-full bg-[#fafafa] flex items-center justify-center px-5 py-10">
+                <div className="w-full max-w-107.5">
+
+                    {/* TOP */}
+                    <button
+                        type="button"
+                        onClick={() => router.push('/signup')}
+                        className="flex items-center gap-2 text-[13px] text-gray-500 hover:text-black mb-5 cursor-pointer"
+                    >
+                        <FiArrowLeft />
+                        Change email
+                    </button>
+
+                    {/* BRAND */}
+                    <div className="text-center mb-7">
+                        <div className="mx-auto w-12 h-12 rounded-2xl bg-black text-white flex items-center justify-center mb-4">
+                            <FiShield className="text-[21px]" />
+                        </div>
+
+                        <h1 className="text-[26px] font-bold text-gray-900">
+                            Verify your email
+                        </h1>
+
+                        <p className="text-[14px] text-gray-500 mt-2">
+                            Enter the verification code we sent
+                            to your email.
+                        </p>
                     </div>
 
-                    <p
-                        className={`text-[14px] mb-4 ${canResend ? 'cursor-pointer text-blue-600 hover:underline' : 'text-gray-500 cursor-not-allowed'}`}
-                        onClick={handleResend}
+                    {/* CARD */}
+                    <form
+                        onSubmit={handleSubmit}
+                        className="w-full bg-white border border-gray-200 rounded-2xl p-7 shadow-sm"
                     >
-                        {canResend ? `Resend Code` : `Resend code in ${seconds}s`}
-                    </p>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-2.5 bg-[#333] text-white text-[15px] cursor-pointer hover:bg-black flex justify-center items-center rounded-lg"
-                    >
-                        {loading ? <LoadingContainer /> : 'Create Account'}
-                    </button>
-                </form>
+                        {/* EMAIL */}
+                        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-gray-50 border border-gray-100 mb-6">
+                            <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center">
+                                <FiMail className="text-gray-600" />
+                            </div>
+
+                            <div className="min-w-0">
+                                <p className="text-[11px] text-gray-400">
+                                    CODE SENT TO
+                                </p>
+
+                                <p className="text-[13px] font-medium text-gray-800 truncate">
+                                    {form.email}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* OTP */}
+                        <div className="mb-4">
+                            <label
+                                htmlFor="code"
+                                className="block text-[12px] font-medium text-gray-500 mb-1.5"
+                            >
+                                VERIFICATION CODE
+                            </label>
+
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                name="code"
+                                id="code"
+                                required
+                                maxLength={6}
+                                value={form.code}
+                                onChange={(e) =>
+                                    setForm(f => ({
+                                        ...f,
+                                        code: e.target.value.replace(
+                                            /\D/g,
+                                            ''
+                                        )
+                                    }))
+                                }
+                                placeholder="Enter 6-digit code"
+                                className="w-full h-12 rounded-lg border border-gray-200 px-4 text-[18px] tracking-[6px] text-center font-semibold outline-none focus:border-black transition-colors"
+                            />
+                        </div>
+
+                        {/* RESEND */}
+                        <div className="flex items-center justify-between mb-6">
+                            <p className="text-[12px] text-gray-400">
+                                Didn't receive the code?
+                            </p>
+
+                            <button
+                                type="button"
+                                disabled={!canResend || loading}
+                                onClick={handleResend}
+                                className={`text-[12px] font-medium flex items-center gap-1.5 ${
+                                    canResend
+                                        ? 'text-blue-600 hover:text-blue-700 cursor-pointer'
+                                        : 'text-gray-400 cursor-not-allowed'
+                                }`}
+                            >
+                                <FiRefreshCw />
+
+                                {canResend
+                                    ? 'Resend code'
+                                    : `Resend in ${seconds}s`}
+                            </button>
+                        </div>
+
+                        {/* SUBMIT */}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-11 rounded-lg bg-black text-white text-[14px] font-medium hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {loading ? (
+                                <LoadingContainer />
+                            ) : (
+                                'Create Account'
+                            )}
+                        </button>
+                    </form>
+
+                    {/* FOOTER */}
+                    <p className="text-center text-[11px] text-gray-400 mt-5">
+                        Check your spam or junk folder if you
+                        don't see the email.
+                    </p>
+                </div>
             </section>
         </>
     );

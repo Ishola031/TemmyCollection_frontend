@@ -1,6 +1,6 @@
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
-
+// import IsAuth from '../Components/IsAuth';
 
 export default function PageLayout({
   children,
@@ -9,9 +9,11 @@ export default function PageLayout({
 }>) {
   return (
     <>
-      <Navbar />
-      {children}
-      <Footer />
+      {/* <IsAuth> */}
+        <Navbar />
+          {children}
+        <Footer />
+      {/* </IsAuth> */}
     </>
   );
 }

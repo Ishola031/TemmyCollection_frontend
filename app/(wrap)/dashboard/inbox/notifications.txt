@@ -1,0 +1,389 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import Dashboard from "../../../Components/Dashboard";
+import { useNotifications } from "../../../hook/notifications";
+import api from "../../../api/api";
+import { FiBell, FiCheckCircle, FiPackage, FiTag, FiInfo, FiChevronRight, FiX,} from "react-icons/fi";
+
+const InboxPage = () => {
+    const [initialNotifications, setInitialNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [showMessageInfo, setShowMessageInfo] = useState(false);
+    const [messageInfo, setMessageInfo] = useState({});
+    const messageInfoRef = useRef(null);
+
+    useEffect(() => {
+        const initializeInbox = async () => {
+            try {
+                await api.post(
+                    "http://localhost:8000/api/a/isauthenticated/"
+                );
+
+                setIsAuthenticated(true);
+
+                const response = await api.get(
+                    "http://localhost:8000/api/notifications/customer/"
+                );
+
+                const data = response.data;
+
+                setInitialNotifications(
+                    Array.isArray(data)
+                        ? data
+                        : data.results || []
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to initialize inbox:",
+                    error
+                );
+
+                setIsAuthenticated(false);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initializeInbox();
+    }, []);
+
+    const { notifications } = useNotifications(
+        isAuthenticated,
+        initialNotifications
+    );
+
+    useEffect(() => {
+        const handleSidebarClickOutside = (event) => {
+            if (
+                messageInfoRef.current &&
+                !messageInfoRef.current.contains(event.target)
+            ) {
+                setShowMessageInfo(false);
+            }
+        };
+
+        document.addEventListener(
+            "mousedown",
+            handleSidebarClickOutside
+        );
+
+        return () => {
+            document.removeEventListener(
+                "mousedown",
+                handleSidebarClickOutside
+            );
+        };
+    }, []);
+
+    useEffect(() => {
+        if (showMessageInfo) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [showMessageInfo]);
+
+    const handleMessageInfo = (message) => {
+        setMessageInfo(message);
+        setShowMessageInfo(true);
+    };
+
+    const getNotificationIcon = (item) => {
+        const text = `${item?.title || ""} ${
+            item?.message || ""
+        }`.toLowerCase();
+
+        if (
+            text.includes("order") ||
+            text.includes("delivery") ||
+            text.includes("shipped")
+        ) {
+            return <FiPackage />;
+        }
+
+        if (
+            text.includes("offer") ||
+            text.includes("discount") ||
+            text.includes("sale")
+        ) {
+            return <FiTag />;
+        }
+
+        if (
+            text.includes("success") ||
+            text.includes("complete") ||
+            text.includes("confirmed")
+        ) {
+            return <FiCheckCircle />;
+        }
+
+        return <FiInfo />;
+    };
+
+    const getNotificationIconStyle = (item) => {
+        const text = `${item?.title || ""} ${
+            item?.message || ""
+        }`.toLowerCase();
+
+        if (
+            text.includes("order") ||
+            text.includes("delivery") ||
+            text.includes("shipped")
+        ) {
+            return "bg-blue-50 text-blue-600";
+        }
+
+        if (
+            text.includes("offer") ||
+            text.includes("discount") ||
+            text.includes("sale")
+        ) {
+            return "bg-purple-50 text-purple-600";
+        }
+
+        if (
+            text.includes("success") ||
+            text.includes("complete") ||
+            text.includes("confirmed")
+        ) {
+            return "bg-green-50 text-green-600";
+        }
+
+        return "bg-gray-100 text-gray-600";
+    };
+
+    const handleDate = (date) => {
+        if (!date) {
+            return "Just now";
+        }
+
+        const notificationDate = new Date(date);
+
+        if (isNaN(notificationDate.getTime())) {
+            return "Just now";
+        }
+
+        return notificationDate.toLocaleDateString(
+            "en-NG",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            }
+        );
+    };
+
+    return (
+        <>
+            <section className="w-full min-h-screen pt-22 px-10 lg:px-15 pb-10 max-[740px]:px-5 max-[740px]:pt-30">
+                <div className="flex gap-6">
+                    <Dashboard
+                        custom="inbox"
+                        display="hidden"
+                    />
+
+                    <div className="w-[70%] max-[850px]:w-full">
+                        {/* PAGE HEADER */}
+                        <div className="flex justify-between items-end mb-6">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-[25px] font-bold">
+                                        Notifications
+                                    </h1>
+
+                                    {notifications.length > 0 && (
+                                        <span className="min-w-6 h-6 px-1.5 rounded-full bg-black text-white text-[11px] flex justify-center items-center">
+                                            {notifications.length}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <p className="text-gray-500 text-[14px] mt-1">
+                                    Stay updated with your account,
+                                    orders and promotions.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* NOTIFICATION CONTAINER */}
+                        <div className="w-full border border-gray-200 rounded-2xl bg-white overflow-hidden">
+                            {/* HEADER */}
+                            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-9 h-9 rounded-full bg-gray-100 flex justify-center items-center">
+                                        <FiBell className="text-gray-700" />
+                                    </div>
+
+                                    <div>
+                                        <h2 className="font-semibold text-[16px]">
+                                            Your notifications
+                                        </h2>
+
+                                        <p className="text-[12px] text-gray-400">
+                                            Recent updates
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BODY */}
+                            {loading ? (
+                                <div className="py-20 flex justify-center items-center">
+                                    <div className="h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-black" />
+                                </div>
+                            ) : notifications.length === 0 ? (
+                                <div className="py-16 px-5 flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 rounded-full bg-gray-100 flex justify-center items-center mb-4">
+                                        <FiBell className="text-[25px] text-gray-400" />
+                                    </div>
+
+                                    <h3 className="font-semibold text-[17px]">
+                                        No notifications
+                                    </h3>
+
+                                    <p className="text-[13px] text-gray-400 mt-1 max-w-xs">
+                                        You don't have any notifications
+                                        yet. We'll let you know when
+                                        something important happens.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    {notifications.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            onClick={() =>
+                                                handleMessageInfo(item)
+                                            }
+                                            className="group px-5 py-4 border-b border-gray-100 last:border-b-0 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                        >
+                                            {/* ICON */}
+                                            <div
+                                                className={`w-11 h-11 shrink-0 rounded-full flex justify-center items-center text-[18px] ${getNotificationIconStyle(
+                                                    item
+                                                )}`}
+                                            >
+                                                {getNotificationIcon(
+                                                    item
+                                                )}
+                                            </div>
+
+                                            {/* CONTENT */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <h3 className="text-[14px] font-semibold text-gray-900 line-clamp-1">
+                                                        {item.title ||
+                                                            "Notification"}
+                                                    </h3>
+
+                                                    <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                                                        {handleDate(
+                                                            item.created_at
+                                                        )}
+                                                    </span>
+                                                </div>
+
+                                                <p className="text-[13px] text-gray-500 mt-1 line-clamp-2">
+                                                    {item.message ||
+                                                        item.title}
+                                                </p>
+                                            </div>
+
+                                            {/* ARROW */}
+                                            <FiChevronRight className="text-gray-300 group-hover:text-gray-600 transition-colors shrink-0" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* NOTIFICATION DETAILS */}
+            <div
+                className={`fixed inset-0 z-700 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 ${
+                    showMessageInfo
+                        ? "opacity-100 pointer-events-auto"
+                        : "opacity-0 pointer-events-none"
+                }`}
+            >
+                <div
+                    ref={messageInfoRef}
+                    className={`relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 ${
+                        showMessageInfo
+                            ? "scale-100 translate-y-0"
+                            : "scale-95 translate-y-2"
+                    }`}
+                >
+                    {/* MODAL HEADER */}
+                    <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div
+                                className={`w-10 h-10 rounded-full flex justify-center items-center text-[18px] ${getNotificationIconStyle(
+                                    messageInfo
+                                )}`}
+                            >
+                                {getNotificationIcon(messageInfo)}
+                            </div>
+
+                            <div>
+                                <p className="text-[11px] text-gray-400 uppercase tracking-wide">
+                                    Notification
+                                </p>
+
+                                <p className="text-[13px] font-medium text-gray-700">
+                                    {handleDate(
+                                        messageInfo?.created_at
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() =>
+                                setShowMessageInfo(false)
+                            }
+                            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex justify-center items-center cursor-pointer"
+                        >
+                            <FiX className="text-[18px]" />
+                        </button>
+                    </div>
+
+                    {/* MODAL CONTENT */}
+                    <div className="px-5 py-6">
+                        <h2 className="text-[20px] font-bold text-gray-900">
+                            {messageInfo?.title ||
+                                "Notification"}
+                        </h2>
+
+                        <p className="text-[14px] text-gray-600 leading-6 mt-3">
+                            {messageInfo?.message ||
+                                "No message available."}
+                        </p>
+                    </div>
+
+                    {/* MODAL FOOTER */}
+                    <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+                        <button
+                            onClick={() =>
+                                setShowMessageInfo(false)
+                            }
+                            className="px-5 py-2.5 bg-black text-white rounded-lg text-[13px] font-medium hover:bg-gray-800 cursor-pointer"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+export default InboxPage;

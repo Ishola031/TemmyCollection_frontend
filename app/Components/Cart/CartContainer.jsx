@@ -1,4 +1,5 @@
 'use client';
+
 import Image from "next/image";
 import React, { useContext, useMemo, useState } from 'react';
 import Link from "next/link";
@@ -14,7 +15,6 @@ const CartContainer = () => {
     const [error, setError] = useState(null);
     const { data: cart, isLoading: loading } = useCart(isAuthenticated);
 
-    // 4. DERIVED CLIENT COUNTS & CALCULATIONS VIA USEMEMO
     const cartCount = useMemo(() => {
         if (!cart || cart.error || !cart.cartitems) return 0;
         return cart.cartitems.reduce((acc, item) => {
@@ -24,33 +24,40 @@ const CartContainer = () => {
 
     const summary = useMemo(() => {
         if (!cart || !cart.cartitems) return { totalPrice: 0 };
+
         let totalPrice = 0;
 
-        cart?.cartitems.forEach(cat => {
+        cart.cartitems.forEach(cat => {
             if (cat.is_active) {
                 if (cat.product.discount > 0) {
-                    const price = cat.variations === null ? cat.product.price : cat.variations.price;
+                    const price = cat.variations === null
+                        ? cat.product.price
+                        : cat.variations.price;
+
                     totalPrice += ((100 - cat.product.discount) / 100 * price) * cat.quantity;
                 } else {
-                    const price = cat.variations !== null ? cat.variations.price : cat.product.price;
+                    const price = cat.variations !== null
+                        ? cat.variations.price
+                        : cat.product.price;
+
                     totalPrice += price * cat.quantity;
                 }
             }
         });
+
         return { totalPrice };
     }, [cart]);
 
     const addToCartMutation = useAddToCartItem(isAuthenticated, setError);
     const removeCartItemMutation = useRemoveCartItem(isAuthenticated);
 
-    // Action Handlers bound to JSX actions
     const handleAddToCart = (product, variation, cartItemId) => {
         addToCartMutation.mutate({ product, variation, cartItemId });
     };
 
     const handleCartItemDecrement = (cartitemId, cartID, deleteItem = false) => {
-        // Fallback to localStorage if cartID is not on cart state object yet
         const resolvedCartId = cartID || localStorage.getItem('cart_id');
+
         removeCartItemMutation.mutate({
             cartitemId,
             cartID: resolvedCartId,
@@ -65,152 +72,375 @@ const CartContainer = () => {
         ) {
             return true;
         }
+
         if (
             removeCartItemMutation.isPending &&
             removeCartItemMutation.variables?.cartitemId === cartItemId
         ) {
             return true;
         }
+
         return false;
     };
 
     return (
         <>
             <Message message={error} setError={setError} />
-            <section className="pb-10 w-full h-auto px-10 lg:px-15 min-px-3 max-[740px]:px-5 pt-25 max-[740px]:pt-30">
-                <div className="w-full h-full flex gap-5 max-[660px]:flex-col">
-                    {/* CART ITEMS CONTAINER */}
-                    <div className={`${cart?.cartitems?.length <= 0 ? ('w-full') : ('w-[75%]')} max-[660px]:w-full`}>
-                        {cart?.cartitems?.length > 0 && (
-                            <div><h4 className="text-[18px] pb-2 font-semibold">Cart ({cartCount})</h4></div>
-                        )}
 
-                        <div className="flex flex-col gap-2">
-                            {loading ? (
-                                <div className="flex flex-col w-full items-center py-20">
-                                    <div className="h-5.5 w-5.5 animate-spin rounded-full border-4 border-gray-200 border-t-[#333]" />
+            <section className="w-full min-h-screen bg-gray-50 px-10 lg:px-15 max-[740px]:px-5 pt-28 pb-12">
+
+                {/* PAGE HEADER */}
+                <div className="mb-6">
+                    <h1 className="text-[26px] font-semibold text-[#333]">
+                        Shopping Cart
+                    </h1>
+
+                    {cart?.cartitems?.length > 0 && (
+                        <p className="text-[14px] text-gray-500 mt-1">
+                            {cartCount} {cartCount === 1 ? 'item' : 'items'} in your cart
+                        </p>
+                    )}
+                </div>
+
+                {loading ? (
+
+                    /* LOADING */
+                    <div className="w-full bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center py-32">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
+                        <p className="text-sm text-gray-500 mt-4">
+                            Loading your cart...
+                        </p>
+                    </div>
+
+                ) : cart?.cartitems?.length > 0 ? (
+
+                    <div className="flex gap-6 items-start max-[850px]:flex-col">
+
+                        {/* ================= CART ITEMS ================= */}
+                        <div className="w-[72%] max-[850px]:w-full">
+
+                            {/* CART HEADER */}
+                            <div className="bg-white border border-gray-200 rounded-xl px-5 py-4 mb-3 flex justify-between items-center">
+                                <div>
+                                    <h2 className="font-semibold text-[17px]">
+                                        Cart
+                                    </h2>
+                                    <p className="text-[13px] text-gray-500">
+                                        Review your selected products
+                                    </p>
                                 </div>
-                            ) : (
-                                cart?.cartitems?.length > 0 ? (
-                                    cart?.cartitems?.map(ct => {
-                                        let isactive = ct?.is_active
-                                        return (
-                                            <div className="flex flex-col w-full pb-2 border-b border-[#333]" key={`cartitem-${ct.id}`}>
-                                                <div className="w-full h-auto flex gap-2.5">
-                                                    <div className={`w-[100] h-[100] max-h-30 max-[500px]:w-[25%] relative`}>
-                                                        <Image src={`${ct.product.image}`} width={100} height={100} alt={ct.product.name} className="w-full h-full rounded-xl" unoptimized />
-                                                        {ct.product.discount > 0 && (
-                                                            <div className={`${!isactive ? ('bg-[#d6d0d0]') : ('bg-amber-400')} absolute hidden top-0 right-0 text-[13px] py-0.5 px-1.5 text-white max-[500px]:flex`}>-{ct.product.discount}%</div>
-                                                        )}
-                                                    </div>
 
-                                                    <div className='w-[80%] max-[500px]:w-[75%]'>
-                                                        <div className="flex justify-between max-[500px]:flex-col">
-                                                            <div className="w-[80%] leading-5 text-[#333] max-[500px]:w-full">
-                                                                <p className={`text-[20px] max-[500px]:text-[18px] ${!isactive && ('text-[#d6d0d0]')}`}>{ct?.product?.name}</p>
-                                                                <p className={`text-[13px] ${!isactive ? ('text-[#d6d0d0]') : ('text-orange-400')}`}>
-                                                                    {!isactive ? ('Out Of Stock') : ('Few unit left')}
-                                                                </p>
-                                                                <div className={`flex gap-1 text-[15px] ${!isactive && ('text-[#d6d0d0]')}`} >{ct?.variations?.color && (<p>Color: {ct.variations.color.name} </p>)} {ct?.variations?.size && (<p>, Size: {ct.variations.size.name}</p>)}</div>
-                                                            </div>
+                                <span className="text-[13px] bg-gray-100 px-3 py-1 rounded-full">
+                                    {cartCount} items
+                                </span>
+                            </div>
 
-                                                            {/* PRICE RENDER COMPONENT */}
-                                                            <div className="flex flex-col items-end mb-1 leading-6.5 max-[500px]:flex-row max-[500px]:gap-2 max-[500px]:items-center">
-                                                                {ct.variations !== null ? (
-                                                                    ct.product.discount ? (
-                                                                        <>
-                                                                            <h3 className={`${!isactive ? ('text-[#d6d0d0]') : ('text-black')} text-[1.2rem] font-bold`}><del>N</del>{(((100 - ct?.product?.discount) / 100) * (ct?.variations?.price) * ct.quantity).toLocaleString('en-NG')}.00</h3>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <h2 className={`${!isactive ? ('text-[#d6d0d0]') : ('text-black')}`}><del>N{(ct?.variations?.price * ct.quantity).toLocaleString('en-NG')}.00</del></h2>
-                                                                                <div className={`${!isactive ? ('bg-[#d6d0d0]') : ('bg-amber-400')} text-[13px] py-0.5 px-1.5 max-[500px]:hidden`}>-{ct.product.discount}%</div>
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <h3 className="text-[1.2rem] font-bold"><del>N</del>{(ct?.variations?.price * ct.quantity).toLocaleString('en-NG')}</h3>
-                                                                        </>
-                                                                    )
-                                                                ) : (
-                                                                    ct.product.discount ? (
-                                                                        <>
-                                                                            <h3 className={`${!isactive ? ('text-[#d6d0d0]') : ('text-black')} text-[1.2rem] font-bold`}><del>N</del>{(((100 - ct?.product?.discount) / 100) * (ct?.product?.price) * ct.quantity).toLocaleString('en-NG')}.00</h3>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <h2 className={`${!isactive ? ('text-[#d6d0d0]') : ('text-black')}`}><del>N{(ct.product.price * ct.quantity).toLocaleString('en-NG')}.00</del></h2>
-                                                                                <div className={`${!isactive ? ('bg-[#d6d0d0]') : ('bg-amber-400')} text-[13px] py-0.5 px-1.5 max-[500px]:hidden`}>-{ct.product.discount}%</div>
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <h3 className="text-[1.2rem] font-bold"><del>N</del>{(ct.product.price * ct.quantity).toLocaleString('en-NG')}.00</h3>
-                                                                        </>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        </div>
+                            {/* PRODUCTS */}
+                            <div className="flex flex-col gap-3">
 
-                                                        {/* QUANTITY SETTING ACTION CONTAINER - DESKTOP SCREEN sizes */}
-                                                        <div className="flex items-center justify-between w-full max-[450px]:hidden">
-                                                            <button className="flex items-center gap-1 py-1.5 px-4.5 bg-[#333] text-white text-[14px] cursor-pointer" onClick={() => handleCartItemDecrement(ct.id, cart.cart_id, true)}><MdOutlineDeleteOutline className="text-[20px]" /> Remove</button>
-                                                            {ct.is_active ? (
-                                                                <div className="flex items-center gap-1">
-                                                                    <button className="py-1.5 px-3 bg-amber-500 text-white font-semibold cursor-pointer" onClick={() => handleCartItemDecrement(ct.id, cart.cart_id, false)}>-</button>
-                                                                    <div className="py-1.5 px-3 text-[15px]">{isItemLoading(ct.id) ? (<div className="h-4 w-4 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500" />) : (<p>{ct.quantity}</p>)}</div>
-                                                                    <button className="py-1.5 px-3 bg-amber-500 text-white font-semibold cursor-pointer" onClick={() => handleAddToCart(ct?.product?.id, ct?.variations?.id, ct?.id)}>+</button>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-start justify-end">
-                                                                    <p className="py-1.5 px-3.5 bg-[#333] text-white rounded-lg">Sold out</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                {cart.cartitems.map(ct => {
 
-                                                    </div>
-                                                </div>
+                                    const isactive = ct?.is_active;
 
-                                                {/* QUANTITY SETTING ACTION CONTAINER - MOBILE SCREEN sizes */}
-                                                <div className="items-center justify-between w-full hidden max-[450px]:flex">
-                                                    <button className="flex items-center gap-1 py-1.5 px-4.5 bg-[#333] text-white text-[14px] cursor-pointer" onClick={() => handleCartItemDecrement(ct.id, cart.cart_id, true)}><MdOutlineDeleteOutline className="text-[20px]" /> Remove</button>
-                                                    {ct.is_active ? (
-                                                        <div className="flex items-center gap-1">
-                                                            <button className="py-1.5 px-3 bg-amber-500 text-white font-semibold cursor-pointer" onClick={() => handleCartItemDecrement(ct.id, cart.cart_id, false)}>-</button>
-                                                            <div className="py-1.5 px-3 text-[15px]">{isItemLoading(ct.id) ? (<div className="h-4 w-4 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500" />) : (<p>{ct.quantity}</p>)}</div>
-                                                            <button className="py-1.5 px-3 bg-amber-500 text-white font-semibold cursor-pointer" onClick={() => handleAddToCart(ct?.product?.id, ct?.variations?.id, ct?.id, isAuthenticated)}>+</button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-start justify-end">
-                                                            <p className="py-1.5 px-3.5 bg-[#333] text-white rounded-lg">Sold out</p>
+                                    return (
+                                        <div
+                                            key={`cartitem-${ct.id}`}
+                                            className={`bg-white border border-gray-200 rounded-xl p-4 transition-all
+                                            ${!isactive ? 'opacity-60' : 'hover:shadow-sm'}`}
+                                        >
+
+                                            <div className="flex gap-4">
+
+                                                {/* IMAGE */}
+                                                <div className="w-28 h-28 min-w-28 relative max-[500px]:w-24 max-[500px]:h-24 max-[500px]:min-w-24">
+
+                                                    <Image
+                                                        src={`${ct.product.image}`}
+                                                        width={120}
+                                                        height={120}
+                                                        alt={ct.product.name}
+                                                        className="w-full h-full object-cover rounded-lg"
+                                                        unoptimized
+                                                    />
+
+                                                    {ct.product.discount > 0 && (
+                                                        <div className={`absolute top-2 right-2 text-[11px] px-2 py-1 rounded-md text-white
+                                                        ${isactive ? 'bg-amber-500' : 'bg-gray-400'}`}>
+                                                            -{ct.product.discount}%
                                                         </div>
                                                     )}
+
+                                                </div>
+
+                                                {/* PRODUCT DETAILS */}
+                                                <div className="flex-1 min-w-0">
+
+                                                    <div className="flex justify-between gap-3 max-[600px]:flex-col">
+
+                                                        <div className="min-w-0">
+
+                                                            <Link
+                                                                href={`/store/${ct.product.slug}`}
+                                                                className={`text-[17px] font-medium line-clamp-2 hover:text-blue-600
+                                                                ${!isactive && 'text-gray-400'}`}
+                                                            >
+                                                                {ct.product.name}
+                                                            </Link>
+
+                                                            <p className={`text-[12px] mt-1
+                                                            ${isactive ? 'text-orange-500' : 'text-gray-400'}`}>
+                                                                {isactive ? 'Few units left' : 'Out Of Stock'}
+                                                            </p>
+
+                                                            {(ct?.variations?.color || ct?.variations?.size) && (
+                                                                <div className="flex flex-wrap gap-2 mt-2 text-[13px] text-gray-600">
+
+                                                                    {ct?.variations?.color && (
+                                                                        <span className="bg-gray-100 px-2 py-1 rounded">
+                                                                            Color: {ct.variations.color.name}
+                                                                        </span>
+                                                                    )}
+
+                                                                    {ct?.variations?.size && (
+                                                                        <span className="bg-gray-100 px-2 py-1 rounded">
+                                                                            Size: {ct.variations.size.name}
+                                                                        </span>
+                                                                    )}
+
+                                                                </div>
+                                                            )}
+
+                                                        </div>
+
+                                                        {/* PRICE */}
+                                                        <div className="text-right max-[600px]:text-left">
+
+                                                            {ct.variations !== null ? (
+
+                                                                ct.product.discount ? (
+                                                                    <>
+                                                                        <h3 className={`text-[18px] font-bold ${!isactive && 'text-gray-400'}`}>
+                                                                            N{(
+                                                                                ((100 - ct.product.discount) / 100) *
+                                                                                ct.variations.price *
+                                                                                ct.quantity
+                                                                            ).toLocaleString('en-NG')}
+                                                                        </h3>
+
+                                                                        <p className={`text-[12px] ${!isactive ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                                            <del>
+                                                                                N{(
+                                                                                    ct.variations.price *
+                                                                                    ct.quantity
+                                                                                ).toLocaleString('en-NG')}
+                                                                            </del>
+                                                                        </p>
+                                                                    </>
+                                                                ) : (
+                                                                    <h3 className="text-[18px] font-bold">
+                                                                        N{(
+                                                                            ct.variations.price *
+                                                                            ct.quantity
+                                                                        ).toLocaleString('en-NG')}
+                                                                    </h3>
+                                                                )
+
+                                                            ) : (
+
+                                                                ct.product.discount ? (
+                                                                    <>
+                                                                        <h3 className={`text-[18px] font-bold ${!isactive && 'text-gray-400'}`}>
+                                                                            N{(
+                                                                                ((100 - ct.product.discount) / 100) *
+                                                                                ct.product.price *
+                                                                                ct.quantity
+                                                                            ).toLocaleString('en-NG')}
+                                                                        </h3>
+
+                                                                        <p className={`text-[12px] ${!isactive ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                                            <del>
+                                                                                N{(
+                                                                                    ct.product.price *
+                                                                                    ct.quantity
+                                                                                ).toLocaleString('en-NG')}
+                                                                            </del>
+                                                                        </p>
+                                                                    </>
+                                                                ) : (
+                                                                    <h3 className="text-[18px] font-bold">
+                                                                        N{(
+                                                                            ct.product.price *
+                                                                            ct.quantity
+                                                                        ).toLocaleString('en-NG')}
+                                                                    </h3>
+                                                                )
+
+                                                            )}
+
+                                                        </div>
+
+                                                    </div>
+
+                                                    {/* ACTIONS */}
+                                                    <div className="flex justify-between items-center mt-5">
+
+                                                        <button
+                                                            className="flex items-center gap-1.5 text-[13px] text-red-500 hover:text-red-700 cursor-pointer"
+                                                            onClick={() => handleCartItemDecrement(
+                                                                ct.id,
+                                                                cart.cart_id,
+                                                                true
+                                                            )}
+                                                        >
+                                                            <MdOutlineDeleteOutline className="text-[20px]" />
+                                                            Remove
+                                                        </button>
+
+                                                        {isactive ? (
+
+                                                            <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+
+                                                                <button
+                                                                    className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 cursor-pointer font-semibold"
+                                                                    onClick={() => handleCartItemDecrement(
+                                                                        ct.id,
+                                                                        cart.cart_id,
+                                                                        false
+                                                                    )}
+                                                                >
+                                                                    -
+                                                                </button>
+
+                                                                <div className="w-10 h-9 flex items-center justify-center text-[14px]">
+                                                                    {isItemLoading(ct.id) ? (
+                                                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
+                                                                    ) : (
+                                                                        ct.quantity
+                                                                    )}
+                                                                </div>
+
+                                                                <button
+                                                                    className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 cursor-pointer font-semibold"
+                                                                    onClick={() => handleAddToCart(
+                                                                        ct?.product?.id,
+                                                                        ct?.variations?.id,
+                                                                        ct?.id
+                                                                    )}
+                                                                >
+                                                                    +
+                                                                </button>
+
+                                                            </div>
+
+                                                        ) : (
+
+                                                            <span className="text-[12px] px-3 py-1.5 rounded-lg bg-gray-200 text-gray-500">
+                                                                Sold out
+                                                            </span>
+
+                                                        )}
+
+                                                    </div>
+
                                                 </div>
 
                                             </div>
-                                        )
-                                    })
-                                ) : (
-                                    <div className="flex flex-col w-full items-center text-xl py-40">
-                                        <p className="pb-5">No cart</p>
-                                        <Link href={`/`} className="text-[16px] py-2 px-4 bg-[#333] text-[#eee] cursor-pointer">Continue Shopping</Link>
-                                    </div>
-                                )
-                            )}
+
+                                        </div>
+                                    )
+                                })}
+
+                            </div>
                         </div>
+
+                        {/* ================= SUMMARY ================= */}
+                        <div className="w-[28%] max-[850px]:w-full">
+
+                            <div className="bg-white border border-gray-200 rounded-xl p-5 sticky top-28">
+
+                                <h2 className="text-[17px] font-semibold pb-4 border-b border-gray-200">
+                                    Cart Summary
+                                </h2>
+
+                                <div className="py-4 border-b border-gray-200">
+
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className="text-[14px] text-gray-600">
+                                            Items
+                                        </span>
+
+                                        <span className="text-[14px] font-medium">
+                                            {cartCount}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center">
+
+                                        <span className="text-[15px] font-medium">
+                                            Subtotal
+                                        </span>
+
+                                        <span className="text-[20px] font-bold">
+                                            N{summary?.totalPrice?.toLocaleString('en-NG') || 0}.00
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+                                <div className="pt-4">
+
+                                    <Link
+                                        href="/checkout"
+                                        className="w-full py-3 rounded-lg bg-blue-600 text-white text-[14px] font-medium flex justify-center items-center hover:bg-blue-700 transition-colors"
+                                    >
+                                        Proceed to Checkout
+                                    </Link>
+
+                                    <Link
+                                        href="/"
+                                        className="w-full py-3 rounded-lg border border-gray-300 mt-2 text-[#333] text-[14px] font-medium flex justify-center items-center hover:bg-gray-50 transition-colors"
+                                    >
+                                        Continue Shopping
+                                    </Link>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
                     </div>
 
-                    {/* CART SIDE SUMMARY */}
-                    {cart?.cartitems?.length > 0 && (
-                        <div className=" w-[25%] max-[660px]:w-full">
-                            <h4 className="text-[16px] px-1 py-1 border-b border-[#eee] text-[#333]">CART SUMMARY</h4>
-                            <div className="py-1 flex justify-between items-center">
-                                <h2 className="text-[16px] font-semibold">Subtotal</h2>
-                                <h2 className="text-[19px] font-bold"><del>N</del>{(summary?.totalPrice)?.toLocaleString('en-NG') || 0}.00</h2>
-                            </div>
-                            <div className="flex flex-col">
-                                <Link href={`/checkout`} className="py-2 px-8 bg-[#333] w-full mt-2 text-white text-[15px] cursor-pointer text-center">Checkout</Link>
-                                <Link href={`/`} className="py-2 px-8 bg-[#333] mt-1 text-white text-[15px] cursor-pointer text-center">Continue Shopping</Link>
-                            </div>
+                ) : (
+
+                    /* ================= EMPTY CART ================= */
+                    <div className="w-full bg-white border border-gray-200 rounded-xl flex flex-col items-center justify-center py-28 px-5">
+
+                        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
+                            <span className="text-[35px]">
+                                🛒
+                            </span>
                         </div>
-                    )}
-                </div>
+
+                        <h2 className="text-[20px] font-semibold text-[#333]">
+                            Your cart is empty
+                        </h2>
+
+                        <p className="text-[14px] text-gray-500 mt-2 text-center">
+                            Looks like you haven't added anything to your cart yet.
+                        </p>
+
+                        <Link
+                            href="/"
+                            className="mt-6 py-3 px-6 rounded-lg bg-[#333] text-white text-[14px] hover:bg-black transition-colors"
+                        >
+                            Start Shopping
+                        </Link>
+
+                    </div>
+                )}
+
             </section>
         </>
     );

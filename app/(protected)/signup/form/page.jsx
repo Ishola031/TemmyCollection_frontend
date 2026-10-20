@@ -1,14 +1,25 @@
 'use client'
+
 import { useRouter } from 'next/navigation'
-import React, { useContext, useEffect, useState } from 'react'
-import { AuthContext } from '../../../Components/IsAuth'
+import React, { useEffect, useState } from 'react'
 import LoadingContainer from '../../../Components/LoadingContainer'
 import Message from '../../../Components/Message'
+import {
+    FiArrowLeft,
+    FiCheck,
+    FiEye,
+    FiEyeOff,
+    FiMail,
+    FiShield,
+} from 'react-icons/fi'
 
 const Page = () => {
     const [loading, setLoading] = useState(false)
     const router = useRouter();
     const [error, setError] = useState(null)
+
+    const [showPassword, setShowPassword] = useState(false)
+    const [showPassword2, setShowPassword2] = useState(false)
 
     const [form, setForm] = useState({
         "email": "",
@@ -19,16 +30,23 @@ const Page = () => {
         "code": "",
     })
 
-    // Safely load email from localStorage on mount and handle redirect
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedEmail = localStorage.getItem('email');
+
             if (storedEmail) {
                 try {
                     const parsedEmail = JSON.parse(storedEmail);
-                    setForm(f => ({ ...f, email: parsedEmail }));
+
+                    setForm(f => ({
+                        ...f,
+                        email: parsedEmail
+                    }));
                 } catch {
-                    setForm(f => ({ ...f, email: storedEmail }));
+                    setForm(f => ({
+                        ...f,
+                        email: storedEmail
+                    }));
                 }
             } else {
                 router.push('/signup');
@@ -39,41 +57,44 @@ const Page = () => {
     const sendEmailCode = async () => {
         try {
             setLoading(true)
+
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/a/verifyemail/`, {
-                method: 'POST',
-                headers: {
-                    "Content-Type": 'application/json',
-                },
-                body: JSON.stringify({
-                    "email": form.email,
-                    "first_Name": form.first_Name,
-                    "last_Name": form.last_Name,
-                    "password": form.password,
-                    "password2": form.password2,
-                    "code": form.code,
-                })
-            }
+                `${process.env.NEXT_PUBLIC_API_URL}/api/a/verifyemail/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": 'application/json',
+                    },
+                    body: JSON.stringify({
+                        "email": form.email,
+                        "first_Name": form.first_Name,
+                        "last_Name": form.last_Name,
+                        "password": form.password,
+                        "password2": form.password2,
+                        "code": form.code,
+                    })
+                }
             )
 
             const data = await res.json()
+
             console.log(data)
 
             if (data.success) {
                 router.push('/signup/verifyemail')
+            } else {
+                setError(
+                    data.message ||
+                    "Unable to verify your email. Please try again."
+                )
             }
 
         } catch (error) {
             console.error(error)
-            if (error.response) {
-                setError("Server Error, Please try again later.")
-            } else if (error.request) {
-                console.log("Network error. Is Django running?");
-                setError("Network error, Please try again later")
-            } else {
-                console.log("Unexpected error:", error.message);
-                setError("Unexpected error, Please try again later")
-            }
+
+            setError(
+                "Network or server error. Please try again later."
+            )
         } finally {
             setLoading(false)
         }
@@ -81,51 +102,289 @@ const Page = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         if (form.password !== form.password2) {
-            alert("Password and confirm password must be the same")
+            setError(
+                "Password and confirm password must be the same"
+            )
             return
         }
+
         sendEmailCode();
     };
 
     return (
         <>
-            {/* SIGN UP */}
-            <Message message={error} setError={setError} />
-            <section className="w-full h-screen pt-18 px-17.5 pb-5 max-[740px]:px-5 flex justify-center items-center">
-                <form onSubmit={handleSubmit} className="w-auto h-auto p-10 bg-white rounded-xl ">
-                    <h2 className="text-[#333] text-center text-[20px] pb-1">Sign Up</h2>
-                    <p
-                        className='text-blue-500 pb-1 text-center cursor-pointer'
-                        onClick={() => router.push("/signup")}
+            <Message
+                message={error}
+                setError={setError}
+            />
+
+            <section className="min-h-screen w-full bg-[#fafafa] flex items-center justify-center px-5 py-10">
+
+                <div className="w-full max-w-115">
+
+                    {/* BACK */}
+                    <button
+                        type="button"
+                        onClick={() => router.push('/signup')}
+                        className="flex items-center gap-2 text-[13px] text-gray-500 hover:text-black mb-5 cursor-pointer"
                     >
+                        <FiArrowLeft />
                         Change email
-                    </p>
-                    <div className="relative w-85 h-10 mt-2.5 rounded-xl bg-transparent flex border border-[#333] mb-5">
-                        <input type="email" name="email" id="email" required value={form.email} className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9" disabled />
-                    </div>
-                    <div className="relative w-85 h-10 mt-2.5 rounded-xl bg-transparent flex border border-[#333] mb-5">
-                        <input type="text" name="firstName" id="firstName" required value={form.first_Name} className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9" onChange={(e) => setForm(f => ({ ...f, "first_Name": e.target.value }))} />
-                        <label htmlFor='firstName' className={`absolute top-2 left-2 text-[#333] text-[0.9rem] peer-focus:-top-4.5 peer-valid:-top-4.5 transition-all duration-500 peer-focus:text-[0.8rem] peer-valid:text-[0.8rem]`}>First Name</label>
-                    </div>
-                    <div className="relative w-85 h-10 mt-2.5 rounded-xl bg-transparent flex border border-[#333] mb-5">
-                        <input type="text" name="lastName" id="lastName" required value={form.last_Name} className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9" onChange={(e) => setForm(f => ({ ...f, "last_Name": e.target.value }))} />
-                        <label htmlFor='lastName' className={`absolute top-2 left-2 text-[#333] text-[0.9rem] peer-focus:-top-4.5 peer-valid:-top-4.5 transition-all duration-500 peer-focus:text-[0.8rem] peer-valid:text-[0.8rem]`}>Last Name</label>
-                    </div>
-
-                    <div className="relative w-85 h-10 mt-2.5 rounded-xl bg-transparent flex border border-[#333] mb-5">
-                        <input type="password" name="password" id="password" required value={form.password} className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9" onChange={(e) => setForm(f => ({ ...f, "password": e.target.value }))} />
-                        <label htmlFor='password' className={`absolute top-2 left-2 text-[#333] text-[0.9rem] peer-focus:-top-4.5 peer-valid:-top-4.5 transition-all duration-500 peer-focus:text-[0.8rem] peer-valid:text-[0.8rem]`}>Password</label>
-                    </div>
-
-                    <div className="relative w-85 h-10 mt-2.5 rounded-xl bg-transparent flex border border-[#333] mb-5">
-                        <input type="password" name="password2" id="password2" required value={form.password2} className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9" onChange={(e) => setForm(f => ({ ...f, "password2": e.target.value }))} />
-                        <label htmlFor='password2' className={`absolute top-2 left-2 text-[#333] text-[0.9rem] peer-focus:-top-4.5 peer-valid:-top-4.5 transition-all duration-500 peer-focus:text-[0.8rem] peer-valid:text-[0.8rem]`}>Confirm Password</label>
-                    </div>
-                    <button className="w-full py-2.5 bg-[#333] text-white text-[15px] cursor-pointer hover:bg-black flex justify-center items-center">
-                        {loading ? (<LoadingContainer />) : 'Verify Email'}
                     </button>
-                </form>
+
+                    {/* HEADER */}
+                    <div className="text-center mb-7">
+
+                        <div className="mx-auto w-12 h-12 rounded-2xl bg-black text-white flex items-center justify-center mb-4">
+                            <FiShield className="text-[21px]" />
+                        </div>
+
+                        <h1 className="text-[26px] font-bold text-gray-900">
+                            Create your account
+                        </h1>
+
+                        <p className="text-[14px] text-gray-500 mt-2">
+                            Enter your details to create your
+                            Temmy Collection account.
+                        </p>
+
+                    </div>
+
+                    {/* CARD */}
+                    <form
+                        onSubmit={handleSubmit}
+                        className="w-full bg-white border border-gray-200 rounded-2xl p-7 shadow-sm"
+                    >
+
+                        {/* EMAIL */}
+                        <div className="mb-5">
+
+                            <label className="block text-[12px] font-medium text-gray-500 mb-1.5">
+                                EMAIL ADDRESS
+                            </label>
+
+                            <div className="relative">
+
+                                <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                                <input
+                                    type="email"
+                                    name="email"
+                                    id="email"
+                                    required
+                                    value={form.email}
+                                    disabled
+                                    className="w-full h-11 rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 text-[14px] text-gray-500 outline-none"
+                                />
+
+                            </div>
+
+                        </div>
+
+                        {/* NAME */}
+                        <div className="grid grid-cols-2 gap-3 mb-5">
+
+                            <div>
+
+                                <label
+                                    htmlFor="firstName"
+                                    className="block text-[12px] font-medium text-gray-500 mb-1.5"
+                                >
+                                    FIRST NAME
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="firstName"
+                                    id="firstName"
+                                    required
+                                    value={form.first_Name}
+                                    onChange={(e) =>
+                                        setForm(f => ({
+                                            ...f,
+                                            first_Name: e.target.value
+                                        }))
+                                    }
+                                    placeholder="First name"
+                                    className="w-full h-11 rounded-lg border border-gray-200 px-3 text-[14px] text-gray-800 outline-none focus:border-black transition-colors"
+                                />
+
+                            </div>
+
+                            <div>
+
+                                <label
+                                    htmlFor="lastName"
+                                    className="block text-[12px] font-medium text-gray-500 mb-1.5"
+                                >
+                                    LAST NAME
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="lastName"
+                                    id="lastName"
+                                    required
+                                    value={form.last_Name}
+                                    onChange={(e) =>
+                                        setForm(f => ({
+                                            ...f,
+                                            last_Name: e.target.value
+                                        }))
+                                    }
+                                    placeholder="Last name"
+                                    className="w-full h-11 rounded-lg border border-gray-200 px-3 text-[14px] text-gray-800 outline-none focus:border-black transition-colors"
+                                />
+
+                            </div>
+
+                        </div>
+
+                        {/* PASSWORD */}
+                        <div className="mb-5">
+
+                            <label
+                                htmlFor="password"
+                                className="block text-[12px] font-medium text-gray-500 mb-1.5"
+                            >
+                                PASSWORD
+                            </label>
+
+                            <div className="relative">
+
+                                <input
+                                    type={
+                                        showPassword
+                                            ? "text"
+                                            : "password"
+                                    }
+                                    name="password"
+                                    id="password"
+                                    required
+                                    value={form.password}
+                                    onChange={(e) =>
+                                        setForm(f => ({
+                                            ...f,
+                                            password: e.target.value
+                                        }))
+                                    }
+                                    placeholder="Create a password"
+                                    className="w-full h-11 rounded-lg border border-gray-200 px-3 pr-11 text-[14px] text-gray-800 outline-none focus:border-black transition-colors"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black cursor-pointer"
+                                >
+                                    {showPassword ? (
+                                        <FiEyeOff />
+                                    ) : (
+                                        <FiEye />
+                                    )}
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        {/* CONFIRM PASSWORD */}
+                        <div className="mb-5">
+
+                            <label
+                                htmlFor="password2"
+                                className="block text-[12px] font-medium text-gray-500 mb-1.5"
+                            >
+                                CONFIRM PASSWORD
+                            </label>
+
+                            <div className="relative">
+
+                                <input
+                                    type={
+                                        showPassword2
+                                            ? "text"
+                                            : "password"
+                                    }
+                                    name="password2"
+                                    id="password2"
+                                    required
+                                    value={form.password2}
+                                    onChange={(e) =>
+                                        setForm(f => ({
+                                            ...f,
+                                            password2: e.target.value
+                                        }))
+                                    }
+                                    placeholder="Confirm your password"
+                                    className={`w-full h-11 rounded-lg border px-3 pr-11 text-[14px] text-gray-800 outline-none transition-colors ${
+                                        form.password2 &&
+                                        form.password !== form.password2
+                                            ? "border-red-400"
+                                            : "border-gray-200 focus:border-black"
+                                    }`}
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPassword2(!showPassword2)
+                                    }
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black cursor-pointer"
+                                >
+                                    {showPassword2 ? (
+                                        <FiEyeOff />
+                                    ) : (
+                                        <FiEye />
+                                    )}
+                                </button>
+
+                            </div>
+
+                            {form.password2 &&
+                                form.password !== form.password2 && (
+                                    <p className="text-[11px] text-red-500 mt-1">
+                                        Passwords do not match
+                                    </p>
+                                )}
+
+                            {form.password2 &&
+                                form.password === form.password2 && (
+                                    <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
+                                        <FiCheck />
+                                        Passwords match
+                                    </p>
+                                )}
+
+                        </div>
+
+                        {/* SUBMIT */}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-11 rounded-lg bg-black text-white text-[14px] font-medium hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {loading ? (
+                                <LoadingContainer />
+                            ) : (
+                                'Continue'
+                            )}
+                        </button>
+
+                    </form>
+
+                    {/* FOOTER */}
+                    <p className="text-center text-[11px] text-gray-400 mt-5">
+                        Your email will be verified before your
+                        account is created.
+                    </p>
+
+                </div>
+
             </section>
         </>
     )

@@ -1,22 +1,32 @@
-'use client'
-import { useRouter } from 'next/navigation';
-import React, { useContext, useState } from 'react'
-import { AuthContext } from '../../Components/IsAuth'
-import LoadingContainer from '../../Components/LoadingContainer';
-import Message from '../../Components/Message';
+"use client";
+
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+import LoadingContainer from "../../Components/LoadingContainer";
+import Message from "../../Components/Message";
+import {
+    FiMail,
+    FiArrowRight,
+    FiShield,
+} from "react-icons/fi";
 
 const Page = () => {
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
+    const [email, setEmail] = useState("");
     const router = useRouter();
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const handlesubmit = async (e) => {
         e.preventDefault();
+
         try {
-            setLoading(true)
-            localStorage.setItem('email', JSON.stringify(email));
+            setLoading(true);
+
+            localStorage.setItem(
+                "email",
+                JSON.stringify(email)
+            );
 
             const res = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/a/checkemail/?email=${email}`
@@ -25,77 +35,161 @@ const Page = () => {
             const data = await res.json();
 
             if (data.registered) {
-                router.push('/signin')
+                router.push("/signin");
             }
-            if (data.unregistered) {
-                router.push('/signup/form');
-                console.log('push')
-            }
-            console.log(data)
 
+            if (data.unregistered) {
+                router.push("/signup/form");
+            }
+
+            console.log(data);
         } catch (error) {
             console.error(error);
-            console.error(error)
+
             if (error.response) {
-                setError("Server Error, Please try again later.")
+                setError(
+                    "Server Error, Please try again later."
+                );
             } else if (error.request) {
-                // No response received
-                console.log("Network error. Is Django running?");
-                setError("Network error, Please try again later")
+                setError(
+                    "Network error, Please try again later"
+                );
             } else {
-                console.log("Unexpected error:", error.message);
-                setError("Unexpected error, Please try again later")
+                setError(
+                    "Unexpected error, Please try again later"
+                );
             }
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
+    };
+
+    const handleGoogleLogin = () => {
+        window.location.href =
+            "http://localhost:8000/accounts/google/login";
     };
 
     return (
         <>
-            <Message message={error} setError={setError} />
-            <section className="w-full h-screen pt-18 px-17.5 pb-5 max-[740px]:px-5 flex justify-center items-center">
-                <form onSubmit={handlesubmit} className="w-auto h-auto p-10 bg-white rounded-xl ">
-                    <h2 className="text-[#333] text-center text-[15px] pb-8">
-                        Welcome to temmy Collection
-                    </h2>
+            <Message
+                message={error}
+                setError={setError}
+            />
 
-                    <div className="relative w-85 h-10 rounded-xl bg-transparent flex border border-[#333] mb-5">
-                        <input
-                            type="email"
-                            name="email"
-                            id="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="peer w-full h-full border-0 outline-0 px-2.5 text-[#333] z-9 rounded-xl"
-                        />
+            <section className="min-h-screen w-full bg-[#fafafa] flex items-center justify-center px-5 py-10">
+                <div className="w-full max-w-107.5">
 
-                        <label
-                            htmlFor='email'
-                            className="absolute top-2 left-2 text-[#333] text-[0.9rem]
-                                peer-focus:-top-4.5 peer-valid:-top-4.5
-                                transition-all duration-500
-                                peer-focus:text-[0.8rem] peer-valid:text-[0.8rem]"
-                        >
-                            Email
-                        </label>
+                    {/* BRAND */}
+                    <div className="text-center mb-7">
+                        <div className="mx-auto w-12 h-12 rounded-2xl bg-black text-white flex items-center justify-center mb-4">
+                            <FiShield className="text-[21px]" />
+                        </div>
+
+                        <h1 className="text-[26px] font-bold text-gray-900">
+                            Welcome to Temmy Collection
+                        </h1>
+
+                        <p className="text-[14px] text-gray-500 mt-2">
+                            Enter your email to continue.
+                        </p>
                     </div>
 
-                    <button className="w-full mb-1.5 py-2.5 bg-[#333] text-white text-[15px] cursor-pointer hover:bg-black flex  justify-center items-center">
-                        {loading ? (<LoadingContainer />) : 'Continue'}
-                    </button>
-
-                    <button
-                        type='button'
-                        className="w-full py-2.5 bg-[#333] text-white text-[15px] cursor-pointer hover:bg-black"
+                    {/* CARD */}
+                    <form
+                        onSubmit={handlesubmit}
+                        className="w-full bg-white border border-gray-200 rounded-2xl p-7 shadow-sm"
                     >
-                        Continue with Google
-                    </button>
-                </form>
+                        <div className="mb-6">
+                            <h2 className="text-[17px] font-semibold text-gray-900">
+                                Get started
+                            </h2>
+
+                            <p className="text-[13px] text-gray-500 mt-1">
+                                We'll check if you already have
+                                an account.
+                            </p>
+                        </div>
+
+                        {/* EMAIL */}
+                        <div className="mb-5">
+                            <label
+                                htmlFor="email"
+                                className="block text-[12px] font-medium text-gray-500 mb-1.5"
+                            >
+                                EMAIL ADDRESS
+                            </label>
+
+                            <div className="relative">
+                                <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                                <input
+                                    type="email"
+                                    name="email"
+                                    id="email"
+                                    required
+                                    autoComplete="email"
+                                    value={email}
+                                    onChange={(e) =>
+                                        setEmail(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="Enter your email"
+                                    className="w-full h-11 rounded-lg border border-gray-200 pl-10 pr-3 text-[14px] text-gray-800 outline-none focus:border-black transition-colors"
+                                />
+                            </div>
+                        </div>
+
+                        {/* CONTINUE */}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-11 rounded-lg bg-black text-white text-[14px] font-medium hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <LoadingContainer />
+                            ) : (
+                                <>
+                                    Continue
+                                    <FiArrowRight />
+                                </>
+                            )}
+                        </button>
+
+                        {/* DIVIDER */}
+                        <div className="flex items-center gap-3 my-5">
+                            <div className="h-px flex-1 bg-gray-100" />
+
+                            <span className="text-[11px] text-gray-400">
+                                OR
+                            </span>
+
+                            <div className="h-px flex-1 bg-gray-100" />
+                        </div>
+
+                        {/* GOOGLE */}
+                        <button
+                            type="button"
+                            onClick={handleGoogleLogin}
+                            className="w-full h-11 rounded-lg border border-gray-200 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-center gap-3"
+                        >
+                            <span className="font-bold text-[15px]">
+                                G
+                            </span>
+
+                            Continue with Google
+                        </button>
+                    </form>
+
+                    {/* FOOTER */}
+                    <p className="text-center text-[11px] text-gray-400 mt-5">
+                        By continuing, you agree to our terms
+                        and privacy policy.
+                    </p>
+                </div>
             </section>
         </>
-    )
-}
+    );
+};
 
-export default Page
+export default Page;

@@ -12,6 +12,7 @@ import { AiOutlineMenu } from "react-icons/ai";
 import { FaRegHeart, FaHeart } from "react-icons/fa";
 import { IoMdArrowBack } from 'react-icons/io';
 import Message from './Message';
+import { useProductSearch } from '../hook/useProductSearch';
 
 
 
@@ -26,31 +27,40 @@ const ProductSearch = ({ query }) => {
     const [addLoading, setAddLoading] = useState({});
     const sidebarRef = useRef(null)
     const { isAuthenticated } = useContext(AuthContext)
-    const { data: filters, isLoading: categoryFilterLoading } = useCategoryFilter(slug || null)
     const { data: cart, isLoading: loadingCart } = useCart(isAuthenticated)
     const [filterForm, setFilterForm] = useState({
-        "category": slug,
+        "q": slug,
         "colors": [],
         "sizes": [],
         "brands": [],
+        "minPrice": "",
+        "maxPrice": "",
+        "minDiscount": "",
+        "rating": "",
+        "inStock": 'true',
+        "sort": "popularity",
     });
+    const { data: filters, isLoading: categoryFilterLoading } = useProductSearch(filterForm || null)
     const [showCategoryChild, setShowCategoryChild] = useState({});
     const [error, setError] = useState(null);
+    const [price, setPrice] = useState({
+        minPrice: 0,
+        maxPrice: 0,
+    });
     const addcartfetch = useAddToCartItem(isAuthenticated, setMessage);
     const productLikeFetch = useProductLike();
     const handleCartItemDecrement = useRemoveCartItem(isAuthenticated);
-    const { data: products, isLoading: loadingProduct } = useProduct(filterForm)
+    const products = filters?.products?.results
 
 
     useEffect(() => {
         const parsedFilters = {
             ...filterForm,
-            category: slug
         };
 
         searchParams.forEach((value, key) => {
             // 🚨 IF THE URL HAS "q", STORE IT AS "category" IN STATE
-            const targetKey = key === "q" ? "category" : key;
+            const targetKey = key;
 
             if (parsedFilters[targetKey]) {
                 if (Array.isArray(parsedFilters[targetKey])) {
@@ -68,7 +78,7 @@ const ProductSearch = ({ query }) => {
         });
 
         // Make sure 'q' key is deleted so it never lives inside filterForm state
-        delete parsedFilters.q;
+        // delete parsedFilters.q;
 
         setFilterForm(parsedFilters);
     }, []);
@@ -76,7 +86,7 @@ const ProductSearch = ({ query }) => {
     const handleRouter = (category) => {
         if (!category) return;
         updateURL();
-        setFilterForm(f => ({ ...f, "category": category }))
+        setFilterForm(f => ({ ...f, "q": category }))
     };
 
     const toggleCategoryChild = (filter) => {
@@ -91,7 +101,7 @@ const ProductSearch = ({ query }) => {
 
         Object.entries(filterForm).forEach(([key, value]) => {
             // 1. Map 'category' to the query parameter 'q'
-            const paramKey = key === "category" ? "q" : key;
+            const paramKey = key;
 
             // 2. Clear empty values
             if (!value || value.length === 0) {
@@ -112,14 +122,80 @@ const ProductSearch = ({ query }) => {
         // 4. Construct URL with fixed base path '/catalog'
         const queryString = params.toString();
         const finalURL = queryString ? `/catalog?${queryString}` : '/catalog';
+        console
 
         // 5. Update address bar
         window.history.replaceState({}, "", finalURL);
     };
 
-    const isChecked = (category, value) => {
-        return filterForm[category] ? filterForm[category].includes(value) : false;
+    const categoryUpdateURL = (category) => {
+        const params = new URLSearchParams();
+
+        Object.entries(filterForm).forEach(([key, value]) => {
+            // 1. Map 'category' to the query parameter 'q'
+
+            if (key === "q") return;
+            const paramKey = key;
+
+            // 2. Clear empty values
+            if (!value || value.length === 0) {
+                params.delete(paramKey);
+                return;
+            }
+
+            // 3. Process arrays vs. single values
+            if (Array.isArray(value)) {
+                params.delete(paramKey);
+                const uniqueValues = [...new Set(value)];
+                uniqueValues.forEach(v => params.append(paramKey, v));
+            } else {
+                params.set(paramKey, value);
+            }
+        });
+
+        // 4. Construct URL with fixed base path '/catalog'
+        const queryString = params.toString();
+        const finalURL = queryString ? `/${category}?${queryString}` : '/${category}';
+        console.log(finalURL)
+
+        // 5. Update address bar
+        window.history.replaceState({}, "", finalURL);
+        router.refresh()
     };
+
+    
+
+    // const categoryUpdateURL = () => {
+    //     const params = new URLSearchParams();
+
+    //     // 2. Loop over everything ELSE
+    //     Object.entries(filterForm).forEach(([key, value]) => {
+    //         // STRICTLY SKIP category so it isn't processed/overwritten again below
+    //         if (key === "category") return;
+
+    //         // Skip empty values
+    //         if (!value || value.length === 0) return;
+
+    //         if (Array.isArray(value)) {
+    //             const uniqueValues = [...new Set(value)];
+    //             uniqueValues.forEach(v => params.append(key, v));
+    //         } else {
+    //             params.set(key, value);
+    //         }
+    //     });
+
+    //     // 3. Construct URL
+    //     const queryString = params.toString();
+    //     // const finalURL = queryString ? `/catalog?${queryString}` : '/catalog';
+    //     const finalURL = queryString ? `/${filterForm.category}?${queryString}` : `/${filterForm.category}`;
+
+    //     // 4. Update address bar
+    //     window.history.replaceState({}, "", finalURL);
+    // };
+
+    const updateCategory = (category)=> {
+
+    }
 
     const toggleFilter = (key, value) => {
         setFilterForm((prev) => {
@@ -151,13 +227,6 @@ const ProductSearch = ({ query }) => {
 
     useEffect(() => {
         updateURL()
-        const updateProduct = async () => {
-            if (!categoryFilterLoading) {
-
-                // setProducts()
-            }
-        }
-        updateProduct();
     }, [filterForm, categoryFilterLoading]);
 
     // PREVENT SCROLLING WHEN VIRIATION IS OPEN
@@ -264,9 +333,6 @@ const ProductSearch = ({ query }) => {
             minPrice: priceRange.minPrice,
             maxPrice: priceRange.maxPrice,
         }));
-
-        // Trigger your router update or refetch function here if applicable
-        // e.g., fetchProducts({ ...filterForm, ...priceRange });
     };
 
     // 4. Handle discount percentage select/toggle
@@ -277,12 +343,20 @@ const ProductSearch = ({ query }) => {
         }));
     };
 
+    useEffect(() => {
+        console.log('filterform', filterForm);
+        // console.log('filters', filters);
+        // console.log('products', products);
+        // console.log('cart', cart);
+        // console.log('loading', addLoading);
+    }, [filterForm, products, cart, addLoading, filters])
+
     return (
         <>
             <div className='py-10'></div>
 
-            <div className={`max-[760px]:fixed max-[760px]:inset-0 max-[760px]:bg-white max-[760px]:z-50 max-[760px]:flex-col hidden ${showfilter ? 'max-[760px]:flex' : ''}`}>
-                {/* Mobile Header */}
+            {/* MOBILE FILTER */}
+            {/* <div className={`max-[760px]:fixed max-[760px]:inset-0 max-[760px]:bg-white max-[760px]:z-50 max-[760px]:flex-col hidden ${showfilter ? 'max-[760px]:flex' : ''}`}>
                 <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-3">
                         <button type="button" onClick={() => setSHowFilter((vl) => !vl)} className="p-1 -ml-1 text-gray-700 hover:text-black rounded-full transition-colors active:bg-gray-100" aria-label="Close filters">
@@ -307,9 +381,9 @@ const ProductSearch = ({ query }) => {
                     </button>
                 </div>
 
-                {/* Scrollable Filter Options */}
+              
                 <div className="flex-1 overflow-y-auto px-4 divide-y divide-gray-100 pb-24">
-                    {/* CATEGORY SECTION */}
+                  
                     <div className="py-3.5">
                         <button type="button" className="w-full flex justify-between items-center text-left py-1 group" onClick={() => toggleCategoryChild('category')}>
                             <div>
@@ -341,7 +415,7 @@ const ProductSearch = ({ query }) => {
                         </div>
                     </div>
 
-                    {/* PRICE FILTER SECTION */}
+                   
                     <div className="py-3.5">
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Price (₦)</p>
@@ -371,7 +445,7 @@ const ProductSearch = ({ query }) => {
                             </div>
                         </div>
 
-                        {/* Quick Range Presets */}
+                       
                         <div className="flex flex-wrap gap-1.5">
                             {[
                                 { label: 'Under ₦10k', min: 0, max: 10000 },
@@ -397,7 +471,7 @@ const ProductSearch = ({ query }) => {
                         </div>
                     </div>
 
-                    {/* BRAND SECTION */}
+                   
                     {filters?.brands?.length > 0 && (
                         <div className="py-3.5">
                             <button
@@ -446,7 +520,7 @@ const ProductSearch = ({ query }) => {
                         </div>
                     )}
 
-                    {/* COLOR SECTION */}
+                    
                     {filters?.colors?.length > 0 && (
                         <div className="py-3.5">
                             <button
@@ -495,7 +569,7 @@ const ProductSearch = ({ query }) => {
                         </div>
                     )}
 
-                    {/* SIZE SECTION */}
+                
                     {filters?.sizes?.length > 0 && (
                         <div className="py-3.5">
                             <button
@@ -545,7 +619,7 @@ const ProductSearch = ({ query }) => {
                     )}
                 </div>
 
-                {/* Fixed Bottom Action Bar for Mobile */}
+                
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg z-20">
                     <button
                         type="button"
@@ -558,16 +632,276 @@ const ProductSearch = ({ query }) => {
                         Apply Filters
                     </button>
                 </div>
+            </div> */}
+            <div className={`max-[760px]:fixed max-[760px]:inset-0 max-[760px]:bg-white max-[760px]:z-900 max-[760px]:flex-col hidden ${showfilter ? 'max-[760px]:flex' : ''}`}>
+                
+                {/* Mobile Header */}
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            type="button" 
+                            onClick={() => setSHowFilter((vl) => !vl)} 
+                            className="p-1 -ml-1 text-gray-700 hover:text-black rounded-full transition-colors active:bg-gray-100" 
+                            aria-label="Close filters"
+                        >
+                            <IoMdArrowBack className="text-2xl" />
+                        </button>
+                        <h3 className="font-bold text-lg text-gray-900 tracking-tight">Filters</h3>
+                    </div>
+
+                    <button 
+                        type="button" 
+                        onClick={() => {
+                            handlePriceChange('minPrice', ''); 
+                            handlePriceChange('maxPrice', '');
+                            if (typeof setFilterForm === 'function') {
+                                setFilterForm((prev) => ({
+                                    ...prev,
+                                    brands: [],
+                                    colors: [],
+                                    sizes: [],
+                                    discount: null,
+                                }));
+                            }
+                        }} 
+                        className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider"
+                    >
+                        Clear All
+                    </button>
+                </div>
+
+                {/* Scrollable Filter Options */}
+                <div className="flex-1 overflow-y-auto px-4 divide-y divide-gray-100 pb-24">
+                    
+                    {/* CATEGORY SECTION */}
+                    <div className="py-3.5">
+                        <button type="button" className="w-full flex justify-between items-center text-left py-1 group" onClick={() => toggleCategoryChild('category')}>
+                            <div>
+                                <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Category</p>
+                                <p className="text-xs text-gray-500 font-medium"
+                                onClick={() => handleRouter(filters.filters.category.slug)}
+                                >
+                                    {filters?.filters?.category?.name || 'All Categories'}
+                                </p>
+                            </div>
+                            <AiOutlineMenu className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${showCategoryChild['category'] ? 'rotate-90 text-amber-500 font-bold' : ''}`} />
+                        </button>
+
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategoryChild['category'] ? 'max-h-96 pt-3 pb-1' : 'max-h-0'}`}>
+                            {filters?.filters?.subcategories?.length > 0 ? (
+                                <ul className="space-y-2 pl-1">
+                                    {filters.filters.subcategories.map((sub) => (
+                                        <li key={`sub-${sub.id}`} onClick={() => handleRouter(sub.slug)} className="flex items-center justify-between text-xs text-gray-700 py-1.5 px-2.5 rounded-lg hover:bg-gray-50 cursor-pointer font-medium transition-colors">
+                                            <span>{sub.name}</span>
+                                            <span className="text-gray-400 text-[10px]">→</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                filters?.filters?.category?.id && (
+                                    <div className="text-xs py-1.5 px-2.5 bg-amber-50 rounded-lg text-amber-800 font-semibold border border-amber-200/60"
+                                    onClick={() => handleRouter(filters.filters.category.slug)}
+                                    >
+                                        {filters.filters.category.name}
+                                    </div>
+                                )
+                            )}
+                        </div>
+                    </div>
+
+                    {/* MULTI-SELECT FILTER SECTIONS (Brand, Color, Size) */}
+                    {[
+                        { key: 'brand', label: 'Brand', data: filters?.filters?.brands, formKey: 'brands' },
+                        { key: 'color', label: 'Color', data: filters?.filters?.colors, formKey: 'colors' },
+                        { key: 'size', label: 'Size', data: filters?.filters?.sizes, formKey: 'sizes' },
+                    ].map(({ key, label, data, formKey }) => {
+                        if (!data?.length) return null;
+                        const isOpen = showCategoryChild[key];
+                        const selectedCount = filterForm[formKey]?.length || 0;
+
+                        return (
+                            <div key={key} className="py-3.5">
+                                <button
+                                    type="button"
+                                    className="w-full flex justify-between items-center text-left py-1 group"
+                                    onClick={() => toggleCategoryChild(key)}
+                                >
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">{label}</p>
+                                        <p className="text-xs text-gray-500 font-medium">
+                                            {selectedCount > 0 ? `${selectedCount} selected` : `All ${label}s`}
+                                        </p>
+                                    </div>
+                                    <AiOutlineMenu className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${isOpen ? 'rotate-90 text-amber-500 font-bold' : ''}`} />
+                                </button>
+
+                                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-60 pt-3' : 'max-h-0'}`}>
+                                    <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
+                                        {data.map((item) => {
+                                            const itemValue = `${item.slug || item.name}`;
+                                            const isChecked = filterForm[formKey].includes(itemValue);
+                                            
+                                            return (
+                                                <label
+                                                    key={`${key}-${item.id}`}
+                                                    htmlFor={`${key}-m-${item.id}`}
+                                                    className="flex items-center gap-3 py-1 cursor-pointer group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        id={`${key}-m-${item.id}`}
+                                                        name={key}
+                                                        checked={isChecked}
+                                                        onChange={() => toggleFilter(formKey, itemValue)}
+                                                        className="w-4 h-4 accent-[#333] rounded border-gray-300 cursor-pointer"
+                                                    />
+                                                    <span className="text-xs font-medium text-gray-700 group-hover:text-black">
+                                                        {item.name}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* DYNAMIC ATTRIBUTES */}
+                    {(filters?.filters?.attributes || []).map((attribute) => (
+                        <div key={attribute.slug} className="w-full pb-3 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-semibold uppercase mb-2">{attribute.attribute}</h4>
+                            <div className="space-y-1">
+                                {attribute.options.map((option) => {
+                                    const key = "attribute_" + attribute.slug;
+                                    const selected = Array.isArray(filterForm[key]) ? filterForm[key] : [];
+                                    
+                                    return (
+                                        <label key={option.id} className="flex gap-2 items-center py-1 text-sm cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selected.includes(option.value)} 
+                                                onChange={() => toggleFilter(key, option.value)} 
+                                                className="w-4 h-4 accent-amber-500 rounded border-gray-300 cursor-pointer"
+                                            />
+                                            <span className="text-xs text-gray-700">{option.value}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* PRICE FILTER SECTION */}
+                    <div className="py-3.5">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Price (₦)</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="relative w-1/2">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">₦</span>
+                                <input
+                                    type="number"
+                                    placeholder="Min"
+                                    value={price?.minPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, minPrice: e.target.value}))}
+                                    className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 transition-all font-medium"
+                                />
+                            </div>
+                            <span className="text-gray-400 text-xs">-</span>
+                            <div className="relative w-1/2">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">₦</span>
+                                <input
+                                    type="number"
+                                    placeholder="Max"
+                                    value={price?.maxPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, maxPrice: e.target.value}))}
+                                    className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* DISCOUNT PERCENTAGE FILTER */}
+                    <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">Discount Percentage</h4>
+                        <div className="flex flex-col gap-1.5">
+                            {[50, 40, 30, 20, 10].map((discount) => (
+                                <div className="flex gap-2 items-center" key={`discount-${discount}`}>
+                                    <input
+                                        type="radio"
+                                        id={`discount-${discount}`}
+                                        name="discountFilters"
+                                        checked={String(filterForm?.discount || "") === String(discount)}
+                                        onChange={() => handleDiscountChange(discount)}
+                                        className="w-4 h-4 accent-[#333] cursor-pointer"
+                                    />
+                                    <label htmlFor={`discount-${discount}`} className="text-xs text-gray-700 cursor-pointer font-medium">
+                                        {discount}% off or more
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* RATINGS & STOCK */}
+                    <div className="w-full pb-4 border-t border-gray-200 pt-3">
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">Customer Rating</h4>
+                        <div className="space-y-1">
+                            {[5, 4, 3, 2, 1].map((stars) => (
+                                <label key={stars} className="flex items-center gap-2 py-1 text-xs cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        name="ratings" 
+                                        checked={String(filterForm.rating || "") === String(stars)} 
+                                        onChange={() => setFilterForm((prev) => ({ ...prev, rating: String(prev.rating) === String(stars) ? "" : String(stars) }))} 
+                                        className="w-4 h-4 accent-[#333] cursor-pointer"
+                                    />
+                                    <span className="text-amber-500">{"★".repeat(stars)}<span className="text-gray-300">{"★".repeat(5-stars)}</span></span>
+                                    <span className="text-gray-600">& up</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <label className="flex items-center justify-between text-xs font-medium text-gray-700 cursor-pointer">
+                                <span>In stock only</span>
+                                <input 
+                                    type="checkbox" 
+                                    checked={filterForm.inStock === 'true'} 
+                                    onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? 'true' : 'false' }))} 
+                                    className="w-4 h-4 accent-[#333] rounded border-gray-300 cursor-pointer"
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* Fixed Bottom Action Bar for Mobile */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg z-20">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (typeof applyPriceFilter === 'function') applyPriceFilter();
+                            setSHowFilter(false);
+                        }}
+                        className="w-full py-3 bg-[#333] hover:bg-[#333] active:scale-[0.99] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md"
+                    >
+                        Apply Filters
+                    </button>
+                </div>
             </div>
 
-            {/*  */}
-            <section className="w-full h-auto pb-10 pt-5 px-10 lg:px-15 min-px-3 max-[740px]:px-5">
+            {/* PRODUCTS AND FILTER */}
+            {/* <section className="w-full h-auto pb-10 pt-5 px-10 lg:px-15 min-px-3 max-[740px]:px-5">
                 <div className="w-full h-full flex gap-8 max-[760px]:flex-col">
 
-                    {/* Sidebar Filters */}
+                   
                     <div className="sticky self-start top-20 h-auto w-[25%] shadow-xl p-3 rounded-xl max-[870px]:w-[30%] max-[760px]:hidden">
 
-                        {/* Category Section */}
+                        
                         <div className="w-full h-auto pb-3">
                             {!categoryFilterLoading && <h4 className="text-[16px] font-semibold">CATEGORY</h4>}
                             {categoryFilterLoading ? (
@@ -581,29 +915,18 @@ const ProductSearch = ({ query }) => {
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                 </ul>
-                            ) : filters?.subcategories ? (
-                                <ul className="pl-3 pt-1">
-                                    <li className="font-semibold cursor-pointer">{filters?.category?.name}</li>
-                                    {filters?.subcategories.map((sub) => (
-                                        <li
-                                            key={`sub-${sub.id}`}
-                                            className="pl-3 pt-1 cursor-pointer"
-                                            onClick={() => handleRouter(sub.slug)}
-                                        >
-                                            {sub.name}
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <ul className="pl-3 pt-1">
-                                    {filters?.category?.map((cat) => (
-                                        <li key={`cat-${cat.id}`} className="cursor-pointer">{cat.name}</li>
-                                    ))}
+                            ) : filters?.filters?.category && (
+                                <ul className="pl-1 pt-1">
+                                    <ul className="pl-2 pt-1">
+                                        {filters?.filters?.category.map((cat) => (
+                                            <li key={`cat-${cat.id}`} className="cursor-pointer">{cat.name}</li>
+                                        ))}
+                                    </ul>
                                 </ul>
                             )}
                         </div>
 
-                        {/* Brand Section */}
+                        
                         <div className="w-full h-auto pb-3">
                             {categoryFilterLoading ? (
                                 <ul className="pt-1">
@@ -614,7 +937,7 @@ const ProductSearch = ({ query }) => {
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                 </ul>
-                            ) : filters?.brands?.length > 0 && (
+                            ) : filters?.filters?.brands?.length > 0 && (
                                 <>
                                     <h4 className="text-[16px] font-semibold">BRAND</h4>
                                     <div className="flex items-center border border-[#333] rounded-xl p-1 mb-2">
@@ -622,7 +945,7 @@ const ProductSearch = ({ query }) => {
                                         <input type="text" className="border-0 outline-0 w-[80%] text-[14px]" placeholder="Search brand..." />
                                     </div>
                                     <div>
-                                        {filters?.brands.map((br) => (
+                                        {filters?.filters?.brands?.map((br) => (
                                             <div className="flex gap-1 items-center" key={`brand-${br.id}`}>
                                                 <input
                                                     type="checkbox"
@@ -639,7 +962,7 @@ const ProductSearch = ({ query }) => {
                             )}
                         </div>
 
-                        {/* Price Range Filter (Jumia Style) */}
+                        
                         <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
                             <h4 className="text-[16px] font-semibold mb-2">PRICE (₦)</h4>
                             <div className="flex items-center gap-2 mb-2">
@@ -667,7 +990,7 @@ const ProductSearch = ({ query }) => {
                             </button>
                         </div>
 
-                        {/* Discount Percentage Filter (Jumia Style) */}
+                        
                         <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
                             <h4 className="text-[16px] font-semibold mb-2">DISCOUNT PERCENTAGE</h4>
                             <div className="flex flex-col gap-1.5">
@@ -689,13 +1012,13 @@ const ProductSearch = ({ query }) => {
                             </div>
                         </div>
 
-                        {/* Size Section */}
+                        
                         <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
-                            {!categoryFilterLoading && filters?.sizes?.length > 0 && (
+                            {!categoryFilterLoading && filters?.filters?.sizes?.length > 0 && (
                                 <>
                                     <h4 className="text-[16px] font-semibold">SIZE</h4>
                                     <div>
-                                        {filters?.sizes.map((sz) => (
+                                        {filters?.filters?.sizes.map((sz) => (
                                             <div className="flex gap-1.5 items-center" key={`size-${sz.id}`}>
                                                 <input
                                                     type="checkbox"
@@ -712,13 +1035,13 @@ const ProductSearch = ({ query }) => {
                             )}
                         </div>
 
-                        {/* Color Section */}
+                        
                         <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
-                            {!categoryFilterLoading && filters?.colors?.length > 0 && (
+                            {!categoryFilterLoading && filters?.filters?.colors?.length > 0 && (
                                 <>
                                     <h4 className="text-[16px] font-semibold">COLOR</h4>
                                     <div>
-                                        {filters?.colors.map((cl) => (
+                                        {filters?.filters?.colors.map((cl) => (
                                             <div className="flex gap-1.5 items-center" key={`color-${cl.id}`}>
                                                 <input
                                                     type="checkbox"
@@ -736,9 +1059,362 @@ const ProductSearch = ({ query }) => {
                         </div>
                     </div>
 
-                    {/* Products Area */}
+                
                     <div className="w-[75%] h-auto flex flex-col max-[870px]:w-[70%] max-[760px]:w-full max-[760px]:pt-5">
 
+                        
+                        <div className="flex items-center justify-between bg-white z-10 pb-4 border-b border-gray-100 max-[760px]:w-full">
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900 capitalize tracking-tight">
+                                    {(filterForm.category || slug)?.replaceAll("-", " ") || "All Products"}
+                                </h1>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Showing {products?.length || 0} results
+                                </p>
+                            </div>
+
+                            
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:inline">Sort by:</span>
+                                <select className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-lg font-medium p-2 pr-8 outline-none focus:border-gray-400 transition-colors cursor-pointer">
+                                    <option value="popular">Most Popular</option>
+                                    <option value="newest">Newest Arrivals</option>
+                                    <option value="price-low">Price: Low to High</option>
+                                    <option value="price-high">Price: High to Low</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    
+                        <div className="w-full grid grid-cols-4 pt-6 max-[1280px]:grid-cols-3 max-[970px]:grid-cols-2 max-[480px]:grid-cols-1 gap-5">
+                            {categoryFilterLoading ? (
+                                
+                                [1, 2, 3, 4, 5, 6].map((i) => (
+                                    <div key={`skel-${i}`} className="flex flex-col bg-gray-50/50 rounded-2xl p-3 border border-gray-100 animate-pulse">
+                                        <div className="w-full aspect-square bg-gray-200 rounded-xl mb-3"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                                        <div className="h-9 bg-gray-200 rounded-xl w-full mt-auto"></div>
+                                    </div>
+                                ))
+                            ) : (
+                                products?.length > 0 &&
+                                products.map((pr) => {
+                                    const inStock = cart?.cartitems?.filter((ct) => {
+                                        if (ct?.product?.id !== pr?.id) return false;
+                                        if (pr?.variations?.length > 0) {
+                                            return pr.variations.some((vr) => vr.id === ct?.variations?.id);
+                                        }
+                                        return true;
+                                    }) || [];
+
+                                    const quantity = inStock.reduce((acc, item) => acc + (item.quantity || 0), 0);
+                                    const discountedPrice = pr.discount ? ((100 - pr.discount) / 100) * pr.price : pr.price;
+
+                                    return (
+                                        <div
+                                            key={`pr-${pr.id}`}
+                                            className="group relative flex flex-col justify-between bg-white rounded-2xl border border-gray-100 p-3.5 transition-all duration-300 hover:shadow-xl hover:shadow-gray-100 hover:border-gray-200"
+                                        >
+                                            
+                                            <div className="relative w-full aspect-square bg-gray-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
+                                            
+                                                {pr.discount > 0 && (
+                                                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                                                        -{pr.discount}%
+                                                    </span>
+                                                )}
+
+                                                
+                                                <button
+                                                    onClick={() => handleLike(pr?.slug)}
+                                                    className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-md text-gray-700 hover:text-red-500 hover:bg-white transition-all shadow-sm"
+                                                >
+                                                    {pr?.is_Liked ? (
+                                                        <FaHeart className="text-red-500 text-sm" />
+                                                    ) : (
+                                                        <FaRegHeart className="text-sm" />
+                                                    )}
+                                                </button>
+
+                                                
+                                                <Link href={`/store/${pr.slug}`} className="w-full h-full flex items-center justify-center">
+                                                    <Image
+                                                        src={pr.image}
+                                                        alt={pr.name || 'Product Image'}
+                                                        width={180}
+                                                        height={180}
+                                                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 ease-out"
+                                                        unoptimized
+                                                    />
+                                                </Link>
+                                            </div>
+
+                                            
+                                            <div className="flex flex-col grow">
+                                                <Link href={`/store/${pr.slug}`}>
+                                                    <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-10 hover:text-black transition-colors">
+                                                        {pr.name}
+                                                    </h3>
+                                                </Link>
+
+                                            
+                                                <div className="mt-2 mb-3 flex items-baseline gap-2">
+                                                    <span className="text-base font-bold text-gray-900">
+                                                        ₦{discountedPrice.toLocaleString('en-NG')}
+                                                    </span>
+                                                    {pr.discount > 0 && (
+                                                        <span className="text-xs text-gray-400 line-through font-normal">
+                                                            ₦{pr.price.toLocaleString('en-NG')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            
+                                            <div className="w-full mt-auto">
+                                                {pr.stock <= 0 ? (
+                                                    <button disabled className="w-full py-2 bg-gray-100 text-gray-400 text-xs font-semibold rounded-xl cursor-not-allowed">
+                                                        Out of Stock
+                                                    </button>
+                                                ) : inStock.length > 0 ? (
+                                                    <div className="w-full flex items-center justify-between bg-gray-900 text-white rounded-xl overflow-hidden p-1">
+                                                        <button
+                                                            onClick={() => handleRemoveVariation(pr, inStock[0]?.id)}
+                                                            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <span className="text-xs font-semibold px-2">
+                                                            {isItemLoading(pr?.id, inStock[0]?.variations?.id, inStock[0]?.id) ? (
+                                                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                            ) : (
+                                                                quantity
+                                                            )}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => handleAddVariations(pr)}
+                                                            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleAddVariations(pr)}
+                                                        className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-xl transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                                                    >
+                                                        {isItemLoading(pr?.id, null, null) ? (
+                                                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                        ) : (
+                                                            "Add to Cart"
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </section> */}
+
+
+            <section className="w-full h-auto pb-10 pt-5 px-10 lg:px-15 min-px-3 max-[740px]:px-5">
+                <div className="w-full h-full flex gap-8 max-[760px]:flex-col">
+                    {/* Sidebar Filters */}
+                    <div className="sticky top-20 h-auto w-[25%] shadow-xl p-3 rounded-xl max-[870px]:w-[30%] max-[760px]:hidden">
+                        {/* Category Section */}
+                        <div className="w-full h-auto pb-3">
+                            {!categoryFilterLoading && <h4 className="text-[16px] font-semibold">CATEGORY</h4>}
+                            {categoryFilterLoading ? (
+                                <ul className="pt-1">
+                                    <li className="p-2 mb-1 pl-5 skeleton w-25"></li>
+                                    <li className="p-2 mb-1 pl-5 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                </ul>
+                            ) : filters?.filters?.subcategories ? (
+                                <ul className="pl-3 pt-1">
+                                    <li className="font-semibold cursor-pointer">{filters?.filters?.category?.name}</li>
+                                    {filters?.filters?.subcategories.map((sub) => (
+                                        <li
+                                            key={`sub-${sub.id}`}
+                                            className="pl-3 pt-1 cursor-pointer"
+                                            onClick={() => handleRouter(sub.slug)}
+                                        >
+                                            {sub.name}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <ul className="pl-3 pt-1">
+                                    {filters?.filters?.category?.map((cat) => (
+                                        <li key={`cat-${cat.id}`}  onClick={()=> categoryUpdateURL(cat.slug)} className="cursor-pointer">{cat.name}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* Brand Section */}
+                        <div className="w-full h-auto pb-3">
+                            {categoryFilterLoading ? (
+                                <ul className="pt-1">
+                                    <li className="p-2 mb-1 pl-5 skeleton w-25"></li>
+                                    <li className="p-2 mb-1 pl-5 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                    <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
+                                </ul>
+                            ) : filters?.filters?.brands?.length > 0 && (
+                                <>
+                                    <h4 className="text-[16px] font-semibold">BRAND</h4>
+                                    <div className="flex items-center border border-[#333] rounded-xl p-1 mb-2">
+                                        <IoMdClose className="text-[17px] cursor-pointer mr-0.5" />
+                                        <input type="text" className="border-0 outline-0 w-[80%] text-[14px]" placeholder="Search brand..." />
+                                    </div>
+                                    <div>
+                                        {filters?.filters?.brands.map((br) => (
+                                            <div className="flex gap-1 items-center" key={`brand-${br.id}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    id={`brand-${br.id}`}
+                                                    name="brand"
+                                                    checked={filterForm.brands.includes(`${br.slug}`)}
+                                                    onChange={() => toggleFilter("brands", `${br.slug}`)}
+                                                />
+                                                <label htmlFor={`brand-${br.id}`} className="text-[14px] cursor-pointer">{br.name}</label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Size Section */}
+                        {!categoryFilterLoading && filters?.filters?.sizes?.length > 0 && (
+                            <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
+                                <h4 className="text-[16px] font-semibold">SIZE</h4>
+                                <div>
+                                    {filters?.filters?.sizes.map((sz) => (
+                                        <div className="flex gap-1.5 items-center" key={`size-${sz.id}`}>
+                                            <input
+                                                type="checkbox"
+                                                id={`size-${sz.id}`}
+                                                name="size"
+                                                checked={filterForm.sizes.includes(`${sz.slug}`)}
+                                                onChange={() => toggleFilter("sizes", `${sz.slug}`)}
+                                            />
+                                            <label htmlFor={`size-${sz.id}`} className="text-[14px] cursor-pointer">{sz.name}</label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Color Section */}
+                        {!categoryFilterLoading && filters?.filters?.colors?.length > 0 && (
+                            <div className="w-full h-auto pb-3 border-t border-gray-200 pt-3">
+                                <h4 className="text-[16px] font-semibold">COLOR</h4>
+                                <div>
+                                    {filters?.filters?.colors.map((cl) => (
+                                        <div className="flex gap-1.5 items-center" key={`color-${cl.id}`}>
+                                            <input
+                                                type="checkbox"
+                                                id={`color-${cl.id}`}
+                                                name="color"
+                                                checked={filterForm.colors.includes(`${cl.slug}`)}
+                                                onChange={() => toggleFilter("colors", `${cl.slug}`)}
+                                            />
+                                            <label htmlFor={`color-${cl.id}`} className="text-[14px] cursor-pointer">{cl.name}</label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Price Range Filter (Jumia Style) */}
+                        <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
+                            <h4 className="text-[16px] font-semibold mb-2">PRICE (₦)</h4>
+                            <div className="flex items-center gap-2 mb-2">
+                                <input
+                                    type="number"
+                                    placeholder="Min"
+                                    value={price?.minPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, minPrice: e.target.value}))}
+                                    className="w-1/2 p-1.5 border border-gray-300 rounded-lg text-[14px] outline-none focus:border-black"
+                                />
+                                <span className="text-gray-500">-</span>
+                                <input
+                                    type="number"
+                                    placeholder="Max"
+                                    value={price?.maxPrice || ''}
+                                    onChange={(e) => setPrice(v=> ({...v, maxPrice: e.target.value}))}
+                                    className="w-1/2 p-1.5 border border-gray-300 rounded-lg text-[14px] outline-none focus:border-black"
+                                />
+                            </div>
+                            <button onClick={applyPriceFilter}
+                                className="w-full py-1.5 bg-[#333] text-white text-[13px] font-semibold rounded-lg hover:bg-black transition-all"
+                            >
+                                APPLY
+                            </button>
+                        </div>
+
+                        {/* ATTRIBUTES */}
+                        {(filters?.filters?.attributes || []).map((attribute) => <div key={attribute.slug} className="w-full pb-3 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-semibold uppercase">{attribute.attribute}</h4>
+                            {attribute.options.map((option) => {
+                                const key = "attribute_" + attribute.slug;
+                                const selected = Array.isArray(filterForm[key]) ? filterForm[key] : [];
+                                return <label key={option.id} className="flex gap-2 items-center py-1 text-sm">
+                                    <input type="checkbox" checked={selected.includes(option.value)} onChange={() => toggleFilter(key, option.value)} />{option.value}
+                                </label>;
+                            })}
+                        </div>)}
+
+                        {/* Discount Percentage Filter (Jumia Style) */}
+                        <div className="w-full h-auto pb-4 border-t border-gray-200 pt-3">
+                            <h4 className="text-[16px] font-semibold mb-2">DISCOUNT PERCENTAGE</h4>
+                            <div className="flex flex-col gap-1.5">
+                                {[50, 40, 30, 20, 10].map((discount) => (
+                                    <div className="flex gap-2 items-center" key={`discount-${discount}`}>
+                                        <input
+                                            type="radio"
+                                            id={`discount-${discount}`}
+                                            name="discountFilter"
+                                            checked={String(filterForm?.discount || "") === String(discount)}
+                                            onChange={() => handleDiscountChange(discount)}
+                                            className="cursor-pointer"
+                                        />
+                                        <label htmlFor={`discount-${discount}`} className="text-[14px] cursor-pointer">
+                                            {discount}% off or more
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* RATINGS */}
+                        <div className="w-full pb-4 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-semibold mb-2">CUSTOMER RATING</h4>
+                            {[5, 4, 3, 2, 1].map((stars) => <label key={stars} className="flex items-center gap-2 py-1 text-sm">
+                                <input type="radio" name="rating" checked={String(filterForm.rating || "") === String(stars)} onChange={() => setFilterForm((prev) => ({ ...prev, rating: String(prev.rating) === String(stars) ? "" : String(stars) }))} />
+                                <span className="text-amber-500">{"★".repeat(stars)}<span className="text-gray-300">{"★".repeat(5-stars)}</span></span><span>& up</span>
+                            </label>)}
+                            {/* <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.inStock === "true"} onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? "true" : "" }))} /></label> */}
+                            <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.inStock === 'true'} onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? 'true' : 'false' }))} /></label>
+                        </div>
+                    </div>
+
+                    {/* Products Area */}
+                    <div className="relative w-[75%] h-auto flex flex-col max-[870px]:w-[70%] max-[760px]:w-full max-[760px]:pt-5">
                         {/* Top Header & Active Filters Bar */}
                         <div className="flex items-center justify-between bg-white z-10 pb-4 border-b border-gray-100 max-[760px]:w-full">
                             <div>
@@ -753,18 +1429,22 @@ const ProductSearch = ({ query }) => {
                             {/* Sort Controls */}
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:inline">Sort by:</span>
-                                <select className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-lg font-medium p-2 pr-8 outline-none focus:border-gray-400 transition-colors cursor-pointer">
-                                    <option value="popular">Most Popular</option>
+                                <select className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-lg font-medium p-2 pr-8 outline-none focus:border-gray-400 transition-colors cursor-pointer"
+                                    value={filterForm.sort || "popularity"} onChange={(e) => setFilterForm((prev) => ({ ...prev, sort: e.target.value }))}
+                                >
+                                    <option value="popularity">Popularity</option>
                                     <option value="newest">Newest Arrivals</option>
-                                    <option value="price-low">Price: Low to High</option>
-                                    <option value="price-high">Price: High to Low</option>
+                                    <option value="price_asc">Price: Low to High</option>
+                                    <option value="price_desc">Price: High to Low</option>
+                                    <option value="top_rating">Top Rated</option>
+                                    <option value="big_discount">Biggest Discount</option>
                                 </select>
                             </div>
                         </div>
 
                         {/* Product Grid */}
                         <div className="w-full grid grid-cols-4 pt-6 max-[1280px]:grid-cols-3 max-[970px]:grid-cols-2 max-[480px]:grid-cols-1 gap-5">
-                            {loadingProduct ? (
+                            {categoryFilterLoading ? (
                                 /* Skeleton Loading Cards */
                                 [1, 2, 3, 4, 5, 6].map((i) => (
                                     <div key={`skel-${i}`} className="flex flex-col bg-gray-50/50 rounded-2xl p-3 border border-gray-100 animate-pulse">
@@ -894,11 +1574,18 @@ const ProductSearch = ({ query }) => {
                                 })
                             )}
                         </div>
+                        {/* <button className='fixed bottom-5 text-12 cursor-pointer bg-[#333] py-1 px-5 w-30 rounded-xl text-white hidden max-[760px]:block'>filter</button> */}
+                        <button className="sticky bottom-5 left-1/2 -translate-x-1/2 text-[13px] cursor-pointer bg-[#333] py-1.5 px-3 w-25 rounded-xl text-white hidden max-[760px]:block z-90"
+                         onClick={()=> setSHowFilter(true)}
+                        >
+                            filter
+                        </button>
                     </div>
+
                 </div>
             </section>
 
-            {/*  */}
+            {/* VARIATION */}
             <div className={`${showVariation ? "fixed inset-0 z-700 opacity-100 pointer-events-auto" : "hidden opacity-0 pointer-events-none"} transition-opacity duration-300 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4`}>
                 <div ref={sidebarRef} className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all duration-300 scale-100">
                     {/* Header */}

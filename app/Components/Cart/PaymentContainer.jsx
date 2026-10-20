@@ -1,255 +1,1077 @@
 "use client";
-import React, { useEffect, useState } from 'react'
-import Link from "next/link";
-import api from '../../api/api';
-import { MdOutlineDeleteOutline } from "react-icons/md";
-import LoadingContainer from '../../Components/LoadingContainer'
 
-const PaymentContainer = () => {
+import React, { useEffect, useState } from "react";
+import {
+    FiAlertCircle,
+    FiCheckCircle,
+    FiPackage,
+    FiTag,
+    FiTruck,
+} from "react-icons/fi";
+import api from "../../api/api";
+
+export default function Payment() {
+    const [order, setOrder] = useState(null);
+    const [cart, setCart] = useState(null);
+
     const [loading, setLoading] = useState(true);
-    const [paymentLoading, setPaymentLoading] = useState(false)
-    const [error, setError] = useState(null)
-    const [cart, setCart] = useState(true);
-    const [summary, setSummary] = useState({
-        "totalPrice": 0,
-        "deliveryfees": 0,
-        "total": 0,
-    });
+    const [paymentLoading, setPaymentLoading] = useState(false);
 
-    const [checkout, setCheckout] = useState({
-        "first_name": "",
-        "last_name": "",
-        "phone1": "",
-        "phone2": "",
-        "address_line_1": "",
-        "city": "",
-        "state": "",
-        "country": "Nigeria",
-        "order_note": "",
-    });
+    const [error, setError] = useState("");
+    const [notifications, setNotifications] = useState([]);
 
-    useEffect(() => {
-        const fetchCheckout = async () => {
-            try {
-                const response = await api.get('/api/o/cart/checkoutview/')
-                console.log(response.data)
-                const data = response.data
-                setCheckout(f => ({
-                    ...f,
-                    "first_name": data.order.shipping_address?.first_name,
-                    "last_name": data.order.shipping_address?.last_name,
-                    "phone1": data.order.shipping_address?.phone1,
-                    "phone2": data.order.shipping_address?.phone2,
-                    "address_line_1": data.order.shipping_address?.address_line_1,
-                    "city": data.order.shipping_address?.city,
-                    "state": data.order.shipping_address?.state.name,
-                    "country": "Nigeria",
-                    "order_note": data.order.order_note,
-                }))
-                setSummary(s => ({ ...s, "totalPrice": data.order.total_price, "deliveryfees": data.order.shipping_price, "total": data.order.sub_total }))
-            } catch (error) {
-                console.error(error)
-            }
-        };
+    const formatMoney = (amount) => {
+        return new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            minimumFractionDigits: 2,
+        }).format(Number(amount || 0));
+    };
 
-        fetchCheckout();
-    }, [])
+    // ============================================================
+    // FETCH ORDER
+    // ============================================================
 
-    useEffect(() => {
-        const fetchCart = async () => {
-            try {
-                setLoading(true)
-                const cart_id = localStorage.getItem('cart_id')
-                const response = await api.get(
-                    '/api/o/cart', { params: { 'cart_id': cart_id } }, {
+    const fetchOrder = async () => {
+        try {
+            const response = await api.get(
+                "/api/o/cart/checkoutview/",
+                {
                     withCredentials: true,
                 }
-                );
-                console.log(response.data)
-                setCart(response.data)
-            } catch (error) {
-                console.error(error)
-            } finally {
-                setLoading(false)
-            }
-        };
+            );
 
-        fetchCart();
-    }, [])
+            const orderData =
+                response.data?.order ||
+                response.data;
 
-    // useEffect(() => {
-    //     let totalPrice = 0
-    //     cart?.cartitems?.forEach(cat => {
-    //         if (cat.is_active) {
-    //             if (cat.product.discount > 0) {
-    //                 if (cat.variations === null) {
-    //                     totalPrice += ((100 - cat?.product?.discount) / 100 * cat?.product?.price) * cat.quantity
-    //                 } else {
-    //                     totalPrice += ((100 - cat?.product?.discount) / 100 * cat?.variations?.price) * cat.quantity
-    //                 }
-    //             } else {
-    //                 totalPrice += cat.variations.price * cat.quantity
-    //             }
-    //         }
-    //     })
+            setOrder(orderData);
 
-    //     let tax = (2 * totalPrice) / 100
+            return orderData;
+        } catch (err) {
+            console.error(
+                "Failed to fetch order:",
+                err
+            );
 
-    //     setSummary(f => ({ ...f, "totalPrice": totalPrice }))
-    // }, [cart])
+            setError(
+                err.response?.data?.error ||
+                    err.response?.data?.detail ||
+                    "Unable to load your order."
+            );
 
-    useEffect(() => {
-        console.log(cart)
-        console.log(summary)
-    }, [cart, summary])
-
-    const handlePayment = async () => {
-        try {
-            setPaymentLoading(true)
-            const res = await api.post('/api/o/initiatepayment/')
-            console.log(res.data)
-
-            if (res.data.notifications.length > 0) {
-                alert("message")
-            } else {
-                window.location.href = res.data.payment_gateway.data.link
-            }
-        } catch {
-            console.error(error)
-        } finally {
-            setPaymentLoading(false)
+            return null;
         }
     };
 
-    return (
-        <>
-            <div className="w-full h-auto py-5 px-10 lg:px-15 min-px-3 max-[740px]:px-5">
-                <div className="w-full h-full flex gap-5 max-[740px]:flex-col">
-                    <div className="w-[65%] h-full max-[740px]:w-full">
-                        {/* BILLING ADDRESS */}
-                        <div className='mb-2'>
-                            <div className='w-full h-auto px-3 pt-1 bg-[#eee] mb-0.5 flex justify-between'>
-                                <h4 className='text-[19px] font-medium'>Billing Address</h4>
-                                <Link href={`/checkout/billingaddress/`} className='text-amber-500'>Edit </Link>
-                            </div>
+    // ============================================================
+    // FETCH CART
+    // ============================================================
 
-                            <div className='grid p-2.5'>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>First name: </h4> <p>{checkout.first_name}</p></div>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>Last name: </h4> <p>{checkout.last_name}</p></div>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>Phone Number: </h4> <p>{checkout.phone1}</p></div>
-                                {checkout.phone2 !== null && checkout.phone2 !== "" && (
-                                    <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>Phone Number: </h4> <p>{checkout.phone2}</p></div>
+    const fetchCart = async () => {
+        try {
+            const cartId =
+                localStorage.getItem("cart_id");
+
+            const response = await api.get(
+                "/api/o/cart",
+                {
+                    params: {
+                        cart_id: cartId,
+                    },
+                    withCredentials: true,
+                }
+            );
+
+            setCart(response.data);
+
+            return response.data;
+        } catch (err) {
+            console.error(
+                "Failed to fetch cart:",
+                err
+            );
+
+            return null;
+        }
+    };
+
+    // ============================================================
+    // LOAD PAGE
+    // ============================================================
+
+    const loadPage = async () => {
+        setLoading(true);
+
+        await Promise.all([
+            fetchOrder(),
+            fetchCart(),
+        ]);
+
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        loadPage();
+    }, []);
+
+    // ============================================================
+    // HANDLE PAYMENT
+    // ============================================================
+
+    const handlePayment = async () => {
+        setError("");
+        setNotifications([]);
+        setPaymentLoading(true);
+
+        try {
+            const response = await api.post(
+                "/api/o/initiatepayment/",
+                {},
+                {
+                    withCredentials: true,
+                }
+            );
+
+            const data = response.data;
+
+            // ====================================================
+            // UPDATE ORDER
+            // ====================================================
+
+            if (data?.order) {
+                setOrder((previousOrder) => ({
+                    ...previousOrder,
+                    ...data.order,
+                }));
+            }
+
+            // ====================================================
+            // PAYMENT LINK
+            // ====================================================
+
+            const paymentLink =
+                data?.payment_gateway?.data?.link;
+
+            if (!paymentLink) {
+                setError(
+                    "Payment could not be initialized. Please try again."
+                );
+
+                setPaymentLoading(false);
+
+                return;
+            }
+
+            // ====================================================
+            // IMPORTANT
+            // ====================================================
+            //
+            // If Flutterwave returned a payment link,
+            // payment initialization was successful.
+            //
+            // Do NOT show old delivery errors here.
+            //
+
+            setError("");
+
+            setNotifications([]);
+
+            // ====================================================
+            // REDIRECT TO FLUTTERWAVE
+            // ====================================================
+
+            window.location.href = paymentLink;
+
+        } catch (err) {
+            console.error(
+                "Payment initialization failed:",
+                err
+            );
+
+            const data =
+                err.response?.data || {};
+
+            const backendError =
+                data?.error ||
+                data?.message ||
+                data?.detail ||
+                "Payment could not be initiated.";
+
+            setError(backendError);
+
+            if (
+                Array.isArray(
+                    data?.notifications
+                )
+            ) {
+                setNotifications(
+                    data.notifications
+                );
+            } else {
+                setNotifications([]);
+            }
+
+            // ====================================================
+            // REFRESH CART
+            // ====================================================
+
+            await fetchCart();
+
+            // ====================================================
+            // REFRESH ORDER
+            // ====================================================
+
+            await fetchOrder();
+
+            setPaymentLoading(false);
+        }
+    };
+
+    // ============================================================
+    // LOADING
+    // ============================================================
+
+    if (loading) {
+        return (
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <div className="text-center">
+                    <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-black" />
+
+                    <p className="text-sm text-gray-500">
+                        Loading payment details...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // ============================================================
+    // NO ORDER
+    // ============================================================
+
+    if (!order) {
+        return (
+            <div className="mx-auto max-w-3xl px-4 py-10">
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+                    <FiAlertCircle className="mx-auto mb-3 text-3xl text-red-500" />
+
+                    <h2 className="text-lg font-semibold text-red-700">
+                        Unable to load your order
+                    </h2>
+
+                    <p className="mt-2 text-sm text-red-600">
+                        {error ||
+                            "Please return to checkout and try again."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // ============================================================
+    // DELIVERY INFORMATION
+    // ============================================================
+
+    const isPickup =
+        order?.delivery_method === "pickup";
+
+    const isDelivery =
+        order?.delivery_method === "delivery";
+
+    const shippingAddress =
+        order?.shipping_address || null;
+
+    const pickupStation =
+        order?.pickup_station || null;
+
+    /*
+     * Only show missing delivery information when
+     * the order actually requires it.
+     */
+    const missingDeliveryInformation =
+        (isDelivery && !shippingAddress) ||
+        (isPickup && !pickupStation) ||
+        (!isDelivery && !isPickup);
+
+    // ============================================================
+    // CART ITEMS
+    // ============================================================
+
+    const cartItems =
+        cart?.cartitems ||
+        cart?.cart_items ||
+        [];
+
+    // ============================================================
+    // ORDER AMOUNTS
+    // ============================================================
+
+    const subtotal = Number(
+        order?.sub_total || 0
+    );
+
+    const couponDiscount = Number(
+        order?.coupon_discount || 0
+    );
+
+    const shippingPrice = Number(
+        order?.shipping_price || 0
+    );
+
+    const totalPrice = Number(
+        order?.total_price ??
+            subtotal -
+                couponDiscount +
+                shippingPrice
+    );
+
+    // ============================================================
+    // COUPON
+    // ============================================================
+
+    const couponCode =
+        order?.coupon_code ||
+        order?.coupon?.code ||
+        "";
+
+    return (
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+
+            {/* ====================================================
+                HEADER
+            ==================================================== */}
+
+            <div className="mb-8">
+                <h1 className="text-2xl font-bold text-gray-900">
+                    Payment
+                </h1>
+
+                <p className="mt-1 text-sm text-gray-500">
+                    Review your order before completing
+                    payment.
+                </p>
+            </div>
+
+            {/* ====================================================
+                ERRORS / NOTIFICATIONS
+            ==================================================== */}
+
+            {(error ||
+                notifications.length > 0) && (
+                <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
+                    <div className="flex items-start gap-3">
+
+                        <FiAlertCircle className="mt-0.5 shrink-0 text-xl text-red-600" />
+
+                        <div className="min-w-0 flex-1">
+
+                            {error && (
+                                <p className="font-semibold text-red-700">
+                                    {error}
+                                </p>
+                            )}
+
+                            {notifications.length >
+                                0 && (
+                                <div
+                                    className={
+                                        error
+                                            ? "mt-3"
+                                            : ""
+                                    }
+                                >
+                                    <p className="mb-2 text-sm font-medium text-red-700">
+                                        Please review these changes:
+                                    </p>
+
+                                    <div className="space-y-2">
+                                        {notifications.map(
+                                            (
+                                                notification,
+                                                index
+                                            ) => (
+                                                <div
+                                                    key={`${notification.message}-${index}`}
+                                                    className="flex items-start gap-2 rounded-lg bg-white px-3 py-2"
+                                                >
+                                                    <span className="mt-0.5 text-red-500">
+                                                        •
+                                                    </span>
+
+                                                    <p className="text-sm text-red-600">
+                                                        {
+                                                            notification.message
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setError("");
+                                    setNotifications([]);
+                                }}
+                                className="mt-4 text-sm font-medium text-red-700 underline underline-offset-2"
+                            >
+                                Dismiss
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ====================================================
+                CONTENT
+            ==================================================== */}
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+                {/* ==================================================
+                    LEFT
+                ================================================== */}
+
+                <div className="space-y-6 lg:col-span-2">
+
+                    {/* ==================================================
+                        DELIVERY METHOD
+                    ================================================== */}
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+
+                        <div className="mb-5 flex items-center gap-3">
+
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+
+                                {isPickup ? (
+                                    <FiPackage className="text-lg text-gray-700" />
+                                ) : (
+                                    <FiTruck className="text-lg text-gray-700" />
                                 )}
 
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>Address: </h4> <p>{checkout.address_line_1}</p></div>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>City: </h4> <p>{checkout.city}</p></div>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>State: </h4> <p>{checkout.state}</p></div>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>Country: </h4> <p>{checkout.country}</p></div>
-                                <div className='min-w-auto flex gap-1.5 items-center pb-1'><h4 className='text-[18px] font-semibold'>Order Note: </h4> <p>{checkout.order_note}</p></div>
-                            </div>
-                        </div>
-                        {/* SHIPPING ITEMS */}
-                        <div>
-                            <div className='w-full h-auto pt-1 pb-0.5 px-3 bg-[#eee] mb-1.5'>
-                                <h4 className='text-[19px] font-medium mb-2'>Shipping Items</h4>
                             </div>
 
                             <div>
-                                {loading ? (
-                                    <div className="flex flex-col w-full items-center py-20">
-                                        <div className="h-5.5 w-5.5 animate-spin rounded-full border-4 border-gray-200 border-t-[#333]" />
-                                    </div>
-                                ) : (
-                                    cart?.cartitems?.map(ct => {
-                                        let isactive = ct?.is_active
-                                        if (!isactive) return
-                                        return (
-                                            // CART ITEMS
-                                            <div className="flex flex-col w-full border-b border-[#333]" key={`cartitem-${ct.id}`}>
-                                                <div className="w-full h-auto flex gap-2.5 py-1">
-                                                    <div className={`w-[60] h-[60] max-h-30 max-[500px]:w-[25%] relative`}>
-                                                        <img src={`${ct.product.image}`} width={100} height={100} alt={ct.product.name} className="w-full h-full rounded-xl" unoptimized />
-                                                    </div>
 
-                                                    <div className='w-[87%] max-[500px]:w-[75%]'>
-                                                        <div className="flex justify-between max-[500px]:flex-col">
-                                                            <div className="w-[80%] leading-5 text-[#333] max-[500px]:w-full">
-                                                                <p className={`text-[17px] max-[500px]:text-[16px]`}>{ct?.product?.name}</p>
+                                <h2 className="font-semibold text-gray-900">
+                                    Delivery method
+                                </h2>
 
-                                                                <div className={`flex gap-1 text-[12px]`} >{ct?.variations?.color && (<p>Color: {ct.variations.color.name} </p>)} {ct?.variations?.size && (<p>, Size: {ct.variations.size.name}</p>)}</div>
-                                                            </div>
+                                <p className="text-sm text-gray-500">
+                                    {isPickup
+                                        ? "Pickup Station"
+                                        : "Home Delivery"}
+                                </p>
 
-                                                            <div className="flex flex-col items-end mb-1 leading-6.5 max-[500px]:flex-row max-[500px]:gap-2 max-[500px]:items-center">
-                                                                {ct.variations !== null ? (
-                                                                    ct.product.discount ? (
-                                                                        <>
-                                                                            <h3 className={`text-black text-[1.2rem] font-bold`}><del>N</del>{((((100 - ct?.product?.discount) / 100) * ct?.variations?.price) * ct.quantity).toLocaleString('en-NG')}</h3>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <h2 className='text-black'><del>N{(ct.variations.price * ct.quantity).toLocaleString('en-NG')}</del></h2>
-                                                                                <div className={`bg-amber-400 text-[12px] px-1.5 max-[500px]:hidden`}>-{ct.product.discount}%</div>
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <h3 className="text-[1.2rem] font-bold"><del>N</del>{(ct.variations.price * ct.quantity).toLocaleString('en-NG')}</h3>
-                                                                        </>
-                                                                    )
-                                                                ) : (
-                                                                    ct.product.discount ? (
-                                                                        <>
-                                                                            <h3 className={`text-black text-[1.2rem] font-bold`}><del>N</del>{((((100 - ct?.product?.discount) / 100) * ct?.product?.price) * ct.quantity).toLocaleString('en-NG')}</h3>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <h2 className='text-black'><del>N{(ct.product.price * ct.quantity).toLocaleString('en-NG')}</del></h2>
-                                                                                <div className={`bg-amber-400 text-[12px] px-1.5 max-[500px]:hidden`}>-{ct.product.discount}%</div>
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <h3 className="text-[1.2rem] font-bold"><del>N</del>{(ct.product.price * ct.quantity).toLocaleString('en-NG')}</h3>
-                                                                        </>
-                                                                    )
-                                                                )}
-                                                            </div>
-
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })
-                                )}
                             </div>
+
                         </div>
+
+                        {/* ==================================================
+                            HOME DELIVERY
+                        ================================================== */}
+
+                        {isDelivery &&
+                            shippingAddress && (
+                                <div className="rounded-xl border border-gray-200 p-4">
+
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+
+                                        <h3 className="font-medium text-gray-900">
+                                            Shipping address
+                                        </h3>
+
+                                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                                            Home Delivery
+                                        </span>
+
+                                    </div>
+
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {
+                                            shippingAddress.first_name
+                                        }{" "}
+                                        {
+                                            shippingAddress.last_name
+                                        }
+                                    </p>
+
+                                    <p className="mt-1 text-sm text-gray-600">
+                                        {
+                                            shippingAddress.address_line_1
+                                        }
+                                    </p>
+
+                                    <p className="text-sm text-gray-600">
+                                        {
+                                            shippingAddress.city
+                                        }
+                                        ,{" "}
+                                        {
+                                            shippingAddress.state
+                                                ?.name
+                                        }
+                                    </p>
+
+                                    <p className="text-sm text-gray-600">
+                                        {
+                                            shippingAddress.country
+                                        }
+                                    </p>
+
+                                    {shippingAddress.phone1 && (
+                                        <p className="mt-2 text-sm text-gray-600">
+                                            {
+                                                shippingAddress.phone1
+                                            }
+                                        </p>
+                                    )}
+
+                                </div>
+                            )}
+
+                        {/* ==================================================
+                            PICKUP
+                        ================================================== */}
+
+                        {isPickup &&
+                            pickupStation && (
+                                <div className="rounded-xl border border-gray-200 p-4">
+
+                                    <div className="mb-4 flex items-center justify-between gap-3">
+
+                                        <h3 className="font-medium text-gray-900">
+                                            Pickup station
+                                        </h3>
+
+                                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                                            Pickup
+                                        </span>
+
+                                    </div>
+
+                                    <div className="space-y-2">
+
+                                        <p className="font-semibold text-gray-900">
+                                            {
+                                                pickupStation.name
+                                            }
+                                        </p>
+
+                                        <p className="text-sm text-gray-600">
+                                            {
+                                                pickupStation.address
+                                            }
+                                        </p>
+
+                                        <p className="text-sm text-gray-600">
+                                            {
+                                                pickupStation.city
+                                            }
+                                            ,{" "}
+                                            {
+                                                pickupStation.state
+                                                    ?.name
+                                            }
+                                        </p>
+
+                                        {pickupStation.phone_number && (
+                                            <p className="text-sm text-gray-600">
+                                                {
+                                                    pickupStation.phone_number
+                                                }
+                                            </p>
+                                        )}
+
+                                    </div>
+
+                                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                                        <div className="rounded-lg bg-gray-50 p-3">
+
+                                            <p className="text-xs text-gray-500">
+                                                Opening time
+                                            </p>
+
+                                            <p className="mt-1 text-sm font-medium text-gray-900">
+                                                {
+                                                    pickupStation.opening_time
+                                                }
+                                            </p>
+
+                                        </div>
+
+                                        <div className="rounded-lg bg-gray-50 p-3">
+
+                                            <p className="text-xs text-gray-500">
+                                                Closing time
+                                            </p>
+
+                                            <p className="mt-1 text-sm font-medium text-gray-900">
+                                                {
+                                                    pickupStation.closing_time
+                                                }
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            )}
+
+                        {/* ==================================================
+                            MISSING DELIVERY INFORMATION
+                        ================================================== */}
+
+                        {missingDeliveryInformation && (
+                            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+
+                                <div className="flex items-start gap-3">
+
+                                    <FiAlertCircle className="mt-0.5 shrink-0 text-yellow-600" />
+
+                                    <div>
+
+                                        <p className="text-sm font-medium text-yellow-800">
+                                            Delivery information is incomplete.
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-yellow-700">
+                                            Please return to checkout
+                                            and select your delivery
+                                            method.
+                                        </p>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        )}
 
                     </div>
 
-                    <div className="w-[35%] max-[740px]:w-full">
-                        <h4 className="text-[16px] px-1 py-1 border-b border-[#eee] text-[#333]">CART SUMMARY</h4>
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-[16px]">Item's total ()</h2>
-                            <h2 className="text-[16px]"><del>N</del>{parseInt(summary.totalPrice).toLocaleString('en-NG')}.00</h2>
+                    {/* ==================================================
+                        ORDER NOTE
+                    ================================================== */}
+
+                    {order?.order_note && (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+
+                            <h2 className="mb-2 font-semibold text-gray-900">
+                                Order note
+                            </h2>
+
+                            <p className="text-sm leading-6 text-gray-600">
+                                {order.order_note}
+                            </p>
+
                         </div>
-                        <div className=" flex justify-between items-center">
-                            <h2 className="text-[16px]">Delivery fees</h2>
-                            <h2 className="text-[16px]"><del>N</del>{parseInt(summary.deliveryfees).toLocaleString('en-NG')}.00</h2>
+                    )}
+
+                    {/* ==================================================
+                        ORDER ITEMS
+                    ================================================== */}
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+
+                        <div className="mb-5 flex items-center justify-between">
+
+                            <h2 className="font-semibold text-gray-900">
+                                Your items
+                            </h2>
+
+                            <span className="text-sm text-gray-500">
+                                {cartItems.length}{" "}
+                                {cartItems.length === 1
+                                    ? "item"
+                                    : "items"}
+                            </span>
+
                         </div>
-                        <div className="py-0.5 flex justify-between items-center">
-                            <h2 className="text-[16px] font-semibold">Subtotal</h2>
-                            <h2 className="text-[16px] font-bold"><del>N</del>{parseInt(summary.total).toLocaleString('en-NG')}.00</h2>
+
+                        <div className="divide-y divide-gray-100">
+
+                            {cartItems.length > 0 ? (
+                                cartItems.map((item) => {
+
+                                    const product =
+                                        item.product;
+
+                                    const variation =
+                                        item.variations ||
+                                        item.variation;
+
+                                    const image =
+                                        product?.image ||
+                                        product?.images?.[0]
+                                            ?.image;
+
+                                    const price =
+                                        variation?.price ??
+                                        product?.price ??
+                                        0;
+
+                                    const quantity =
+                                        item.quantity || 1;
+
+                                    const discount =
+                                        Number(
+                                            product?.discount ||
+                                                0
+                                        );
+
+                                    const discountedPrice =
+                                        discount > 0
+                                            ? Number(price) *
+                                              ((100 -
+                                                  discount) /
+                                                  100)
+                                            : Number(price);
+
+                                    const itemTotal =
+                                        discountedPrice *
+                                        quantity;
+
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            className="flex gap-4 py-4 first:pt-0 last:pb-0"
+                                        >
+
+                                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+
+                                                {image ? (
+                                                    <img
+                                                        src={image}
+                                                        alt={
+                                                            product?.name ||
+                                                            "Product"
+                                                        }
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="flex h-full w-full items-center justify-center">
+                                                        <FiPackage className="text-xl text-gray-400" />
+                                                    </div>
+                                                )}
+
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+
+                                                <h3 className="line-clamp-2 text-sm font-medium text-gray-900">
+                                                    {
+                                                        product?.name
+                                                    }
+                                                </h3>
+
+                                                {variation && (
+                                                    <div className="mt-1 text-xs text-gray-500">
+
+                                                        {variation.color
+                                                            ?.name && (
+                                                            <span>
+                                                                Color:{" "}
+                                                                {
+                                                                    variation
+                                                                        .color
+                                                                        .name
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {variation.size
+                                                            ?.name && (
+                                                            <span>
+                                                                {variation
+                                                                    .color
+                                                                    ?.name &&
+                                                                    " · "}
+                                                                Size:{" "}
+                                                                {
+                                                                    variation
+                                                                        .size
+                                                                        .name
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {variation.name &&
+                                                            !variation.color &&
+                                                            !variation.size && (
+                                                                <span>
+                                                                    {
+                                                                        variation.name
+                                                                    }
+                                                                </span>
+                                                            )}
+
+                                                    </div>
+                                                )}
+
+                                                <p className="mt-2 text-sm text-gray-500">
+                                                    Qty:{" "}
+                                                    {quantity}
+                                                </p>
+
+                                            </div>
+
+                                            <div className="shrink-0 text-right">
+
+                                                <p className="text-sm font-semibold text-gray-900">
+                                                    {formatMoney(
+                                                        itemTotal
+                                                    )}
+                                                </p>
+
+                                                {discount > 0 && (
+                                                    <p className="mt-1 text-xs text-gray-400">
+                                                        {
+                                                            discount
+                                                        }
+                                                        % off
+                                                    </p>
+                                                )}
+
+                                            </div>
+
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="py-8 text-center">
+
+                                    <FiPackage className="mx-auto mb-3 text-3xl text-gray-300" />
+
+                                    <p className="text-sm text-gray-500">
+                                        No active items in
+                                        your cart.
+                                    </p>
+
+                                </div>
+                            )}
+
                         </div>
-                        <div className="flex flex-col">
-                            <button onClick={() => handlePayment()} className="flex items-center justify-center py-3 px-8 bg-[#333] w-full mt-2 text-white text-[15px] cursor-pointer text-center">
-                                {paymentLoading ? (
-                                    <LoadingContainer />
-                                ) : ('Pay With Flutterwave')}
-                            </button>
-                        </div>
+
                     </div>
 
                 </div>
-            </div>
-        </>
-    )
-}
 
-export default PaymentContainer
+                {/* ==================================================
+                    RIGHT
+                ================================================== */}
+
+                <div className="lg:col-span-1">
+
+                    <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+
+                        <h2 className="mb-5 text-lg font-semibold text-gray-900">
+                            Order summary
+                        </h2>
+
+                        <div className="space-y-4">
+
+                            {/* SUBTOTAL */}
+
+                            <div className="flex items-center justify-between gap-4">
+
+                                <span className="text-sm text-gray-500">
+                                    Subtotal
+                                </span>
+
+                                <span className="text-sm font-medium text-gray-900">
+                                    {formatMoney(
+                                        subtotal
+                                    )}
+                                </span>
+
+                            </div>
+
+                            {/* COUPON */}
+
+                            {couponDiscount > 0 && (
+                                <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+
+                                    <div className="flex items-center justify-between gap-3">
+
+                                        <div className="flex min-w-0 items-center gap-2">
+
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100">
+
+                                                <FiTag className="text-green-600" />
+
+                                            </div>
+
+                                            <div className="min-w-0">
+
+                                                <p className="text-xs font-medium text-green-700">
+                                                    Coupon applied
+                                                </p>
+
+                                                {couponCode && (
+                                                    <p className="truncate text-sm font-semibold text-green-800">
+                                                        {
+                                                            couponCode
+                                                        }
+                                                    </p>
+                                                )}
+
+                                            </div>
+
+                                        </div>
+
+                                        <span className="shrink-0 text-sm font-semibold text-green-700">
+                                            -
+                                            {formatMoney(
+                                                couponDiscount
+                                            )}
+                                        </span>
+
+                                    </div>
+
+                                </div>
+                            )}
+
+                            {/* NO COUPON */}
+
+                            {couponDiscount === 0 &&
+                                !couponCode && (
+                                    <div className="flex items-center justify-between gap-4">
+
+                                        <span className="text-sm text-gray-500">
+                                            Coupon
+                                        </span>
+
+                                        <span className="text-sm text-gray-400">
+                                            None
+                                        </span>
+
+                                    </div>
+                                )}
+
+                            {/* SHIPPING */}
+
+                            <div className="flex items-center justify-between gap-4">
+
+                                <span className="text-sm text-gray-500">
+                                    {isPickup
+                                        ? "Pickup fee"
+                                        : "Delivery fee"}
+                                </span>
+
+                                <span className="text-sm font-medium text-gray-900">
+                                    {formatMoney(
+                                        shippingPrice
+                                    )}
+                                </span>
+
+                            </div>
+
+                            {/* AFTER DISCOUNT */}
+
+                            {couponDiscount > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+
+                                    <span className="text-sm text-gray-500">
+                                        After discount
+                                    </span>
+
+                                    <span className="text-sm font-medium text-gray-900">
+                                        {formatMoney(
+                                            Math.max(
+                                                subtotal -
+                                                    couponDiscount,
+                                                0
+                                            )
+                                        )}
+                                    </span>
+
+                                </div>
+                            )}
+
+                            {/* TOTAL */}
+
+                            <div className="border-t border-gray-100 pt-4">
+
+                                <div className="flex items-center justify-between gap-4">
+
+                                    <span className="font-semibold text-gray-900">
+                                        Total
+                                    </span>
+
+                                    <span className="text-xl font-bold text-gray-900">
+                                        {formatMoney(
+                                            totalPrice
+                                        )}
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        {/* ==================================================
+                            PAYMENT BUTTON
+                        ================================================== */}
+
+                        <button
+                            type="button"
+                            onClick={handlePayment}
+                            disabled={
+                                paymentLoading ||
+                                cartItems.length === 0 ||
+                                notifications.length > 0
+                            }
+                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+
+                            {paymentLoading ? (
+                                <>
+                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <FiCheckCircle />
+
+                                    Pay{" "}
+                                    {formatMoney(
+                                        totalPrice
+                                    )}
+                                </>
+                            )}
+
+                        </button>
+
+                        {notifications.length > 0 && (
+                            <p className="mt-3 text-center text-xs leading-5 text-gray-500">
+                                Please review your cart
+                                before trying payment
+                                again.
+                            </p>
+                        )}
+
+                        <p className="mt-4 text-center text-xs leading-5 text-gray-400">
+                            You will be redirected to
+                            Flutterwave to securely
+                            complete your payment.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    );
+}
