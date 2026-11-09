@@ -70,7 +70,7 @@ export default function EnableCustomerNotifications() {
             ? "Enabling notifications..."
             : enabled
               ? "Notifications enabled"
-              : "Enable device notifications"}
+              : "Enable notifications"}
         </span>
       </button>
 

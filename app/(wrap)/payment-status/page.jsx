@@ -25,12 +25,12 @@ const page = () => {
                 const transactionId = queryParams.get('transaction_id');
 
                 if (status && txRef && transactionId) {
-                    const res = await api.post(`/api/o/payment_callback/?status=${status}&tx_ref=${txRef}&transaction_id=${transactionId}`)
+                    // const res = await api.post(`/api/o/payment_callback/?status=${status}&tx_ref=${txRef}&transaction_id=${transactionId}`)
 
-                    setStatusMessage(res.data.message)
-                    setStatusSubMessage(res.data.subMessage)
+                    // setStatusMessage(res.data.message)
+                    // setStatusSubMessage(res.data.subMessage)
 
-                    console.log(res.data)
+                    // console.log(res.data)
                 }
 
                 setError(null)

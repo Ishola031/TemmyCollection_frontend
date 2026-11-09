@@ -107,7 +107,7 @@ const CheckoutContainer = () => {
 
                 const cart_id = localStorage.getItem("cart_id");
 
-                const response = await api.get("/api/o/cart", {
+                const response = await api.get("/api/o/cart/", {
                     params: {
                         cart_id,
                     },

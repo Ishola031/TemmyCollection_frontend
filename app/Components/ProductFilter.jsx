@@ -3,6 +3,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { IoMdClose } from "react-icons/io";
 import Image from "next/image";
 import Link from "next/link";
+import {FiChevronLeft, FiChevronRight,} from "react-icons/fi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AiOutlineMenu } from "react-icons/ai";
 import { FaRegHeart, FaHeart } from "react-icons/fa";
@@ -11,16 +12,17 @@ import { AuthContext } from './IsAuth';
 import Message from './Message';
 import ProductCollectionContainer from "../Components/Include/ProductCollectionContainer"
 import { useAddToCartItem, useCart, useRemoveCartItem } from '../hook/useCart';
-import { productLikeApi, useProductLike } from '../hook/useProductLike';
-import { useProductFilter } from '../hook/useProductFilter';
-import { ProductFilterPanel, ProductSort } from "./ProductFilterPanel";
-
+import { useProductFilterLike } from '../hook/useProductLike';
+import { useProductFilter, useMobileProductFilter } from '../hook/useProductFilter';
+import { FiShoppingBag } from 'react-icons/fi'
+import GeneralLoading from './Include/GeneralLoading';
 
 
 
 const ProductFilter = ({ slug }) => {
     const searchParams = useSearchParams();
     const [message, setMessage] = useState(null)
+    const [mobilePriceError, setMobilePriceError] = useState(null)
     const router = useRouter();
     const [showfilter, setSHowFilter] = useState(false);
     const [showVariation, setShowVariation] = useState(false);
@@ -38,21 +40,50 @@ const ProductFilter = ({ slug }) => {
         "maxPrice": "",
         "minDiscount": "",
         "rating": "",
-        "inStock": 'true',
+        "instock": 'true',
         "sort": "popularity",
     });
-    const { data: filters, isLoading: categoryFilterLoading } = useProductFilter(filterForm || null)
+
+    const [mobileFilterForm, setMobileFilterForm] = useState({
+        "category": slug,
+        "colors": [],
+        "sizes": [],
+        "brands": [],
+        "minPrice": "",
+        "maxPrice": "",
+        "minDiscount": "",
+        "rating": "",
+        "instock": 'true',
+        "sort": "popularity",
+    });
+
+    const [page, setPage] = useState(1);
+
+    const { data: filters, isPending: categoryFilterLoading } = useProductFilter(filterForm || null, page)
+    const {data:mobilefilters, isPending: mobileFilterLoading} = useMobileProductFilter(mobileFilterForm)
     const [showCategoryChild, setShowCategoryChild] = useState({});
     const [error, setError] = useState(null);
     const [price, setPrice] = useState({
         minPrice: 0,
         maxPrice: 0,
     });
+    const [mobilePrice, setMobilePrice] = useState({
+        minPrice: 0,
+        maxPrice: 0,
+    });
     const addcartfetch = useAddToCartItem(isAuthenticated, setMessage);
-    const productLikeFetch = useProductLike();
+    const productLikeFetch = useProductFilterLike();
     const handleCartItemDecrement = useRemoveCartItem(isAuthenticated);
-    const products = filters?.products?.results
 
+
+    const products = filters?.products?.results || [];
+    const totalProducts = filters?.products?.count || 0;
+    const currentPage = filters?.products?.current_page || 1;
+    const totalPages = filters?.products?.total_pages || 1;
+    const nextPage = filters?.products?.next || null;
+    const previousPage = filters?.products?.previous || null;
+
+    
     useEffect(() => {
         const parsedFilters = {
             ...filterForm,
@@ -83,12 +114,6 @@ const ProductFilter = ({ slug }) => {
         // Update your state with whatever was living inside the URL
         setFilterForm(parsedFilters);
     }, []);
-
-    const handleRouter = (category) => {
-        if (!category) return;
-        updateURL();
-        setFilterForm(f => ({ ...f, "category": category }))
-    };
 
     const updateURL = () => {
         const params = new URLSearchParams();
@@ -132,6 +157,36 @@ const ProductFilter = ({ slug }) => {
                 return {
                     ...prev,
                     // If you actually want to toggle categories later, handle it here
+                    'category': value
+                };
+            }
+
+            // 2. Fallback to an empty array if prev[key] doesn't exist yet
+            const current = prev[key] || [];
+
+            // 3. Check if the value is already selected
+            const exists = current.includes(value);
+
+            // 4. Add or remove the item safely
+            const updated = exists
+                ? current.filter(v => v !== value)
+                : [...current, value];
+
+            return {
+                ...prev,
+                [key]: updated,
+            };
+        });
+    };
+
+    const toggleMobileFilter = (key, value) => {
+        setMobileFilterForm((prev) => {
+            // 1. If key is category, handle it (or return prev if it's a no-op for now)
+            if (key === "category") {
+                return {
+                    ...prev,
+                    // If you actually want to toggle categories later, handle it here
+                    'category': value
                 };
             }
 
@@ -236,25 +291,46 @@ const ProductFilter = ({ slug }) => {
     };
 
     useEffect(() => {
-        console.log('filterform', filterForm);
+        console.log('mobileFilterForm', mobileFilterForm);
+        console.log('mobilefilters', mobilefilters);
+        // console.log('filterform', filterForm);
+        // console.log('page', page);
         // console.log('filters', filters);
         // console.log('products', products);
         // console.log('cart', cart);
         // console.log('loading', addLoading);
-    }, [filterForm, products, cart, addLoading, filters])
+    }, [filterForm, products, cart, addLoading, filters, page, mobilefilters, mobileFilterForm])
 
     const handleLike = (productSlug) => {
         if (!isAuthenticated) router.push('/signin')
-        productLikeFetch.mutate({ productSlug })
+        productLikeFetch.mutate({ productSlug, filterForm, page })
     };
 
-    const applyPriceFilter = () => {
+    const applyPriceFilter = (type) => {
         // If using a state updater like toggleFilter or setFilterForm:
-        setFilterForm((prev) => ({
-            ...prev,
-            minPrice: price.minPrice,
-            maxPrice: price.maxPrice,
-        }));
+        if(type === 'desktop'){
+            setFilterForm((prev) => ({
+                ...prev,
+                minPrice: price.minPrice,
+                maxPrice: price.maxPrice,
+            }));
+        }else if (type === 'mobile'){
+            setFilterForm(mobileFilterForm)
+        }  
+    };
+
+    const applyMobilePriceFilter = () => {
+        setMobilePriceError(null)
+        if(mobilePrice?.minPrice < mobilefilters?.filters?.price?.minPrice || mobilePrice?.maxPrice > mobilefilters?.filters?.price?.maxPrice){
+            setMobilePriceError(`Price must be between ${mobilefilters?.filters?.price?.minPrice} and ${mobilefilters?.filters?.price?.maxPrice}`)
+        }else{
+            console.log('hi')
+            setMobileFilterForm((prev) => ({
+                ...prev,
+                maxPrice: mobilePrice.maxPrice,
+                minPrice: mobilePrice.minPrice,
+            }));
+        }
     };
 
     useEffect(()=> {
@@ -262,19 +338,66 @@ const ProductFilter = ({ slug }) => {
     },[])
 
     // 4. Handle discount percentage select/toggle
-    const handleDiscountChange = (discount) => {
-        setFilterForm((prev) => ({
-            ...prev,
-            discount: prev.discount === discount ? null : discount, // toggles selection
-        }));
+    const handleDiscountChange = (type,discount) => {
+        if (type === 'desktop'){
+            setFilterForm((prev) => ({
+                ...prev,
+                discount: prev.discount === discount ? null : discount, // toggles selection
+            }));
+        }else if (type === 'mobile'){
+            setMobileFilterForm((prev) => ({
+                ...prev,
+                discount: prev.discount === discount ? null : discount, // toggles selection
+            }));
+        }
     };
+
+
+    // PAGINATION
+    const goToPage = (newPage) => {
+        if (newPage < 1 || newPage > totalPages || newPage === page) {
+            return;
+        }
+        setPage(newPage);
+    };
+
+    const paginationPages = useMemo(() => {
+        if (totalPages <= 7) {
+            return Array.from(
+                { length: totalPages },
+                (_, index) => index + 1
+            );
+        }
+
+        if (page <= 4) {
+            return [1, 2, 3, 4, 5, "...", totalPages];
+        }
+
+        if (page >= totalPages - 3) {
+            return [
+                1,
+                "...",
+                totalPages - 4,
+                totalPages - 3,
+                totalPages - 2,
+                totalPages - 1,
+                totalPages,
+            ];
+        }
+
+        return [1, "...", page - 1, page, page + 1, "...", totalPages,];
+    }, [page, totalPages]);
+
+    const handleShowMobileFilter = () => {
+        setMobileFilterForm(filterForm)
+        setSHowFilter(true)
+    }
 
     return (
         <>
             <Message message={message} setError={setMessage} />
             
             <div className={`max-[760px]:fixed max-[760px]:inset-0 max-[760px]:bg-white max-[760px]:z-900 max-[760px]:flex-col hidden ${showfilter ? 'max-[760px]:flex' : ''}`}>
-    
                 {/* Mobile Header */}
                 <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-3">
@@ -292,16 +415,11 @@ const ProductFilter = ({ slug }) => {
                     <button 
                         type="button" 
                         onClick={() => {
-                            handlePriceChange('minPrice', ''); 
-                            handlePriceChange('maxPrice', '');
-                            if (typeof setFilterForm === 'function') {
-                                setFilterForm((prev) => ({
-                                    ...prev,
-                                    brands: [],
-                                    colors: [],
-                                    sizes: [],
-                                    discount: null,
-                                }));
+                            // handlePriceChange('minPrice', ''); 
+                            // handlePriceChange('maxPrice', '');
+                            if (typeof setMobileFilterForm === 'function') {
+                                setMobileFilterForm(filterForm);
+                                setMobilePrice(v=> ({...v, minPrice: mobilefilters?.filters?.price?.minPrice, maxPrice: mobilefilters?.filters?.price?.maxPrice}))
                             }
                         }} 
                         className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider"
@@ -318,42 +436,36 @@ const ProductFilter = ({ slug }) => {
                         <button type="button" className="w-full flex justify-between items-center text-left py-1 group" onClick={() => toggleCategoryChild('category')}>
                             <div>
                                 <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">Category</p>
-                                <p className="text-xs text-gray-500 font-medium">
-                                    {filters?.filters?.category?.name || 'All Categories'}
+                                <p className="text-xs text-gray-500 font-medium capitalize">
+                                    {mobileFilterForm?.category && (mobileFilterForm?.category)}
                                 </p>
                             </div>
                             <AiOutlineMenu className={`text-sm text-gray-400 group-hover:text-black transition-transform duration-200 ${showCategoryChild['category'] ? 'rotate-90 text-amber-500 font-bold' : ''}`} />
                         </button>
 
                         <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategoryChild['category'] ? 'max-h-96 pt-3 pb-1' : 'max-h-0'}`}>
-                            {filters?.filters?.subcategories?.length > 0 ? (
+                            {mobilefilters?.filters?.subcategories?.length > 0 ? (
                                 <ul className="space-y-2 pl-1">
-                                    {filters.filters.subcategories.map((sub) => (
-                                        <li key={`sub-${sub.id}`} onClick={() => handleRouter(sub.slug)} className="flex items-center justify-between text-xs text-gray-700 py-1.5 px-2.5 rounded-lg hover:bg-gray-50 cursor-pointer font-medium transition-colors">
+                                    {mobilefilters?.filters?.subcategories?.map((sub) => (
+                                        <li key={`sub-${sub.id}`} onClick={() => toggleMobileFilter("category", `${sub.slug}`)} className="flex items-center justify-between text-xs text-gray-700 py-1.5 px-2.5 rounded-lg hover:bg-gray-50 cursor-pointer font-medium transition-colors">
                                             <span>{sub.name}</span>
                                             <span className="text-gray-400 text-[10px]">→</span>
                                         </li>
                                     ))}
                                 </ul>
-                            ) : (
-                                filters?.filters?.category?.id && (
-                                    <div className="text-xs py-1.5 px-2.5 bg-amber-50 rounded-lg text-amber-800 font-semibold border border-amber-200/60">
-                                        {filters.filters.category.name}
-                                    </div>
-                                )
-                            )}
+                            ):(<></>)}
                         </div>
                     </div>
 
                     {/* MULTI-SELECT FILTER SECTIONS (Brand, Color, Size) */}
                     {[
-                        { key: 'brand', label: 'Brand', data: filters?.filters?.brands, formKey: 'brands' },
-                        { key: 'color', label: 'Color', data: filters?.filters?.colors, formKey: 'colors' },
-                        { key: 'size', label: 'Size', data: filters?.filters?.sizes, formKey: 'sizes' },
+                        { key: 'brand', label: 'Brand', data: mobilefilters?.filters?.brands, formKey: 'brands' },
+                        { key: 'color', label: 'Color', data: mobilefilters?.filters?.colors, formKey: 'colors' },
+                        { key: 'size', label: 'Size', data: mobilefilters?.filters?.sizes, formKey: 'sizes' },
                     ].map(({ key, label, data, formKey }) => {
                         if (!data?.length) return null;
                         const isOpen = showCategoryChild[key];
-                        const selectedCount = filterForm[formKey]?.length || 0;
+                        const selectedCount = mobileFilterForm[formKey]?.length || 0;
 
                         return (
                             <div key={key} className="py-3.5">
@@ -375,7 +487,7 @@ const ProductFilter = ({ slug }) => {
                                     <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
                                         {data.map((item) => {
                                             const itemValue = `${item.slug || item.name}`;
-                                            const isChecked = filterForm[formKey].includes(itemValue);
+                                            const isChecked = mobileFilterForm[formKey].includes(itemValue);
                                             
                                             return (
                                                 <label
@@ -388,7 +500,7 @@ const ProductFilter = ({ slug }) => {
                                                         id={`${key}-m-${item.id}`}
                                                         name={key}
                                                         checked={isChecked}
-                                                        onChange={() => toggleFilter(formKey, itemValue)}
+                                                        onChange={() => toggleMobileFilter(formKey, itemValue)}
                                                         className="w-4 h-4 accent-[#333] rounded border-gray-300 cursor-pointer"
                                                     />
                                                     <span className="text-xs font-medium text-gray-700 group-hover:text-black">
@@ -404,20 +516,20 @@ const ProductFilter = ({ slug }) => {
                     })}
 
                     {/* DYNAMIC ATTRIBUTES */}
-                    {(filters?.filters?.attributes || []).map((attribute) => (
+                    {(mobilefilters?.filters?.attributes || []).map((attribute) => (
                         <div key={attribute.slug} className="w-full pb-3 border-t border-gray-200 pt-3">
                             <h4 className="text-sm font-semibold uppercase mb-2">{attribute.attribute}</h4>
                             <div className="space-y-1">
                                 {attribute.options.map((option) => {
                                     const key = "attribute_" + attribute.slug;
-                                    const selected = Array.isArray(filterForm[key]) ? filterForm[key] : [];
+                                    const selected = Array.isArray(mobileFilterForm[key]) ? mobileFilterForm[key] : [];
                                     
                                     return (
                                         <label key={option.id} className="flex gap-2 items-center py-1 text-sm cursor-pointer">
                                             <input 
                                                 type="checkbox" 
                                                 checked={selected.includes(option.value)} 
-                                                onChange={() => toggleFilter(key, option.value)} 
+                                                onChange={() => toggleMobileFilter(key, option.value)} 
                                                 className="w-4 h-4 accent-amber-500 rounded border-gray-300 cursor-pointer"
                                             />
                                             <span className="text-xs text-gray-700">{option.value}</span>
@@ -439,24 +551,36 @@ const ProductFilter = ({ slug }) => {
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">₦</span>
                                 <input
                                     type="number"
-                                    placeholder="Min"
-                                    value={price?.minPrice || ''}
-                                    onChange={(e) => setPrice(v=> ({...v, minPrice: e.target.value}))}
+                                    placeholder={mobilefilters?.filters?.price?.minPrice}
+                                    value={mobilePrice?.minPrice}
+                                    onChange={(e) => setMobilePrice(v=> ({...v, minPrice: e.target.value}))}
                                     className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 transition-all font-medium"
                                 />
                             </div>
+
                             <span className="text-gray-400 text-xs">-</span>
+
                             <div className="relative w-1/2">
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">₦</span>
                                 <input
                                     type="number"
-                                    placeholder="Max"
-                                    value={price?.maxPrice || ''}
-                                    onChange={(e) => setPrice(v=> ({...v, maxPrice: e.target.value}))}
+                                    placeholder={mobilefilters?.filters?.price?.maxPrice}
+                                    value={mobilePrice?.maxPrice}
+                                    onChange={(e) => setMobilePrice(v=> ({...v, maxPrice: e.target.value}))}
                                     className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 transition-all font-medium"
                                 />
                             </div>
                         </div>
+
+                        {mobilePriceError && (
+                            <p className='text-red-700 text-[13px]'>{mobilePriceError}</p>
+                        )}
+                        
+                        <button onClick={applyMobilePriceFilter}
+                            className="w-full py-1.5 bg-[#333] text-white text-[13px] font-semibold rounded-lg hover:bg-black transition-all"
+                        >
+                            APPLY
+                        </button>
                     </div>
 
                     {/* DISCOUNT PERCENTAGE FILTER */}
@@ -469,8 +593,8 @@ const ProductFilter = ({ slug }) => {
                                         type="radio"
                                         id={`discount-${discount}`}
                                         name="discountFilters"
-                                        checked={String(filterForm?.discount || "") === String(discount)}
-                                        onChange={() => handleDiscountChange(discount)}
+                                        checked={String(mobileFilterForm?.discount || "") === String(discount)}
+                                        onChange={() => handleDiscountChange('mobile',discount)}
                                         className="w-4 h-4 accent-[#333] cursor-pointer"
                                     />
                                     <label htmlFor={`discount-${discount}`} className="text-xs text-gray-700 cursor-pointer font-medium">
@@ -490,8 +614,8 @@ const ProductFilter = ({ slug }) => {
                                     <input 
                                         type="radio" 
                                         name="ratings" 
-                                        checked={String(filterForm.rating || "") === String(stars)} 
-                                        onChange={() => setFilterForm((prev) => ({ ...prev, rating: String(prev.rating) === String(stars) ? "" : String(stars) }))} 
+                                        checked={String(mobileFilterForm.rating || "") === String(stars)} 
+                                        onChange={() => setMobileFilterForm((prev) => ({ ...prev, rating: String(prev.rating) === String(stars) ? "" : String(stars) }))} 
                                         className="w-4 h-4 accent-[#333] cursor-pointer"
                                     />
                                     <span className="text-amber-500">{"★".repeat(stars)}<span className="text-gray-300">{"★".repeat(5-stars)}</span></span>
@@ -505,8 +629,8 @@ const ProductFilter = ({ slug }) => {
                                 <span>In stock only</span>
                                 <input 
                                     type="checkbox" 
-                                    checked={filterForm.inStock === 'true'} 
-                                    onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? 'true' : 'false' }))} 
+                                    checked={mobileFilterForm.instock === 'true'} 
+                                    onChange={(e) => setMobileFilterForm((prev) => ({ ...prev, instock: e.target.checked ? 'true' : 'false' }))} 
                                     className="w-4 h-4 accent-[#333] rounded border-gray-300 cursor-pointer"
                                 />
                             </label>
@@ -520,15 +644,19 @@ const ProductFilter = ({ slug }) => {
                     <button
                         type="button"
                         onClick={() => {
-                            if (typeof applyPriceFilter === 'function') applyPriceFilter();
+                            if (typeof applyPriceFilter === 'function') applyPriceFilter('mobile');
                             setSHowFilter(false);
                         }}
                         className="w-full py-3 bg-[#333] hover:bg-[#333] active:scale-[0.99] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md"
                     >
-                        Apply Filters
+                        Show ({mobilefilters?.products?.count || 0})
                     </button>
                 </div>
             </div>
+
+            {(categoryFilterLoading || mobileFilterLoading) && (
+                <GeneralLoading transparence={40}/>
+            )}
 
             {/* HEADER */}
             <div className='w-full h-auto pt-22 px-10 lg:px-15 min-px-3  max-[740px]:px-5 max-[740px]:pt-30'>
@@ -541,10 +669,10 @@ const ProductFilter = ({ slug }) => {
             {filters?.filters?.subcategories?.length > 0 && (
                 <section className="w-full h-auto flex px-10 lg:px-15 min-px-3 py-3 max-[740px]:px-5 ">
                     <div className="w-full h-full flex flex-col">
-                        <div className="w-full h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px]">
-                            {/* <h4 className=''>CALL TO ORDER 09069491320</h4> */}
+                        {/* <div className="w-full h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px]">
+                            <h4 className=''></h4>
                             <Link href="">See All </Link>
-                        </div>
+                        </div> */}
 
                         <div className="w-full h-full flex overflow-x-scroll gap-3 pt-1
                                         [&::-webkit-scrollbar]:w-1
@@ -581,7 +709,7 @@ const ProductFilter = ({ slug }) => {
             {filters?.filters?.brands?.length > 0 && (
                 <section className="w-full rounded-2xl px-10 lg:px-15 min-px-3 max-[740px]:px-5 my-3">
         
-                    <div className="w-full h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px] mb-2">
+                    <div className="w-full flex justify-between h-full font-medium text-center bg-blue-600 py-2 px-3 text-white text-[13px] mb-2">
                         <h4 className='uppercase'>Official Stores</h4>
                         <Link href="">See All </Link>
                     </div>
@@ -599,13 +727,13 @@ const ProductFilter = ({ slug }) => {
                                 >
                                     
                                     <div className="w-full h-14 sm:h-16 relative flex items-center justify-center bg-white rounded-lg p-1.5 shadow-2xs group-hover:scale-105 transition-transform duration-200">
-                                        <Image
+                                        <img
                                             src={brandImageUrl}
                                             alt={br?.name || 'Brand Logo'}
-                                            fill
+                                            // fill
                                             sizes="(max-width: 640px) 110px, 130px"
                                             className="object-contain p-1"
-                                            unoptimized
+                                            // unoptimized
                                         />
                                     </div>
 
@@ -639,24 +767,23 @@ const ProductFilter = ({ slug }) => {
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                     <li className="ml-3 p-2 pl-5 mb-1 skeleton"></li>
                                 </ul>
-                            ) : filters?.filters?.subcategories ? (
-                                <ul className="pl-3 pt-1">
-                                    <li className="font-semibold cursor-pointer">{filters?.filters?.category?.name}</li>
-                                    {filters?.filters?.subcategories.map((sub) => (
-                                        <li
-                                            key={`sub-${sub.id}`}
-                                            className="pl-3 pt-1 cursor-pointer"
-                                            onClick={() => handleRouter(sub.slug)}
-                                        >
-                                            {sub.name}
-                                        </li>
-                                    ))}
-                                </ul>
                             ) : (
                                 <ul className="pl-3 pt-1">
-                                    {filters?.filters?.category?.map((cat) => (
-                                        <li key={`cat-${cat.id}`} className="cursor-pointer">{cat.name}</li>
-                                    ))}
+                                    {filters?.filters?.category_parent?.name && (
+                                        <li className="font-semibold cursor-pointer" onClick={() => toggleFilter("category", `${filters?.filters?.category_parent?.slug}`)}>{filters?.filters?.category_parent?.name}</li>
+                                    )}
+                                    {filters?.filters?.category?.name && (
+                                        <li className="font-semibold cursor-pointer" onClick={() => toggleFilter("category", `${filters?.filters?.category?.slug}`)}>{filters?.filters?.category?.name}</li>
+                                    )}
+                                    {filters?.filters?.subcategories?.length > 0 && (
+                                        filters?.filters?.subcategories.map((sub) => (
+                                            <li key={`sub-${sub.id}`} className="pl-3 pt-1 cursor-pointer"
+                                                onClick={() => toggleFilter("category", `${sub.slug}`)}
+                                            >
+                                                {sub.name}
+                                            </li>
+                                        ))
+                                    )}
                                 </ul>
                             )}
                         </div>
@@ -745,7 +872,7 @@ const ProductFilter = ({ slug }) => {
                             <div className="flex items-center gap-2 mb-2">
                                 <input
                                     type="number"
-                                    placeholder="Min"
+                                    placeholder={filters?.filters?.price?.minPrice}
                                     value={price?.minPrice || ''}
                                     onChange={(e) => setPrice(v=> ({...v, minPrice: e.target.value}))}
                                     className="w-1/2 p-1.5 border border-gray-300 rounded-lg text-[14px] outline-none focus:border-black"
@@ -753,7 +880,7 @@ const ProductFilter = ({ slug }) => {
                                 <span className="text-gray-500">-</span>
                                 <input
                                     type="number"
-                                    placeholder="Max"
+                                    placeholder={filters?.filters?.price?.maxPrice}
                                     value={price?.maxPrice || ''}
                                     onChange={(e) => setPrice(v=> ({...v, maxPrice: e.target.value}))}
                                     className="w-1/2 p-1.5 border border-gray-300 rounded-lg text-[14px] outline-none focus:border-black"
@@ -789,7 +916,7 @@ const ProductFilter = ({ slug }) => {
                                             id={`discount-${discount}`}
                                             name="discountFilter"
                                             checked={String(filterForm?.discount || "") === String(discount)}
-                                            onChange={() => handleDiscountChange(discount)}
+                                            onChange={() => handleDiscountChange('desktop',discount)}
                                             className="cursor-pointer"
                                         />
                                         <label htmlFor={`discount-${discount}`} className="text-[14px] cursor-pointer">
@@ -808,7 +935,7 @@ const ProductFilter = ({ slug }) => {
                                 <span className="text-amber-500">{"★".repeat(stars)}<span className="text-gray-300">{"★".repeat(5-stars)}</span></span><span>& up</span>
                             </label>)}
                             {/* <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.inStock === "true"} onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? "true" : "" }))} /></label> */}
-                            <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.inStock === 'true'} onChange={(e) => setFilterForm((prev) => ({ ...prev, inStock: e.target.checked ? 'true' : 'false' }))} /></label>
+                            <label className="mt-2 flex items-center justify-between text-sm"><span>In stock only</span><input type="checkbox" checked={filterForm.instock === 'true'} onChange={(e) => setFilterForm((prev) => ({ ...prev, instock: e.target.checked ? 'true' : 'false' }))} /></label>
                         </div>
                     </div>
 
@@ -842,140 +969,201 @@ const ProductFilter = ({ slug }) => {
                         </div>
 
                         {/* Product Grid */}
-                        <div className="w-full grid grid-cols-4 pt-6 max-[1280px]:grid-cols-3 max-[970px]:grid-cols-2 max-[480px]:grid-cols-1 gap-5">
-                            {categoryFilterLoading ? (
-                                /* Skeleton Loading Cards */
-                                [1, 2, 3, 4, 5, 6].map((i) => (
+                        {categoryFilterLoading ? (
+                            /* Skeleton Loading Cards */
+                            <div className="w-full grid grid-cols-4 pt-6 max-[1280px]:grid-cols-3 max-[970px]:grid-cols-2 max-[480px]:grid-cols-1 gap-5">
+                                {[1, 2, 3, 4, 5, 6].map((i) => (
                                     <div key={`skel-${i}`} className="flex flex-col bg-gray-50/50 rounded-2xl p-3 border border-gray-100 animate-pulse">
                                         <div className="w-full aspect-square bg-gray-200 rounded-xl mb-3"></div>
                                         <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                                         <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
                                         <div className="h-9 bg-gray-200 rounded-xl w-full mt-auto"></div>
                                     </div>
-                                ))
-                            ) : (
-                                products?.length > 0 &&
-                                products.map((pr) => {
-                                    const inStock = cart?.cartitems?.filter((ct) => {
-                                        if (ct?.product?.id !== pr?.id) return false;
-                                        if (pr?.variations?.length > 0) {
-                                            return pr.variations.some((vr) => vr.id === ct?.variations?.id);
-                                        }
-                                        return true;
-                                    }) || [];
+                                ))}
+                            </div>
+                        ) : (
+                            products?.length > 0 ? (
+                                <>
+                                    <div className="w-full grid grid-cols-4 pt-6 max-[1280px]:grid-cols-3 max-[970px]:grid-cols-2 max-[480px]:grid-cols-1 gap-5">
+                                        {products?.map((pr) => {
+                                            const inStock = cart?.cartitems?.filter((ct) => {
+                                                if (ct?.product?.id !== pr?.id) return false;
+                                                if (pr?.variations?.length > 0) {
+                                                    return pr.variations.some((vr) => vr.id === ct?.variations?.id);
+                                                }
+                                                return true;
+                                            }) || [];
 
-                                    const quantity = inStock.reduce((acc, item) => acc + (item.quantity || 0), 0);
-                                    const discountedPrice = pr.discount ? ((100 - pr.discount) / 100) * pr.price : pr.price;
+                                            const quantity = inStock.reduce((acc, item) => acc + (item.quantity || 0), 0);
+                                            const discountedPrice = pr.discount ? ((100 - pr.discount) / 100) * pr.price : pr.price;
 
-                                    return (
-                                        <div
-                                            key={`pr-${pr.id}`}
-                                            className="group relative flex flex-col justify-between bg-white rounded-2xl border border-gray-100 p-3.5 transition-all duration-300 hover:shadow-xl hover:shadow-gray-100 hover:border-gray-200"
-                                        >
-                                            {/* Top Badges & Heart Container */}
-                                            <div className="relative w-full aspect-square bg-gray-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
-                                                {/* Discount Badge */}
-                                                {pr.discount > 0 && (
-                                                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-md shadow-sm">
-                                                        -{pr.discount}%
-                                                    </span>
-                                                )}
-
-                                                {/* Wishlist Button */}
-                                                <button
-                                                    onClick={() => handleLike(pr?.slug)}
-                                                    className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-md text-gray-700 hover:text-red-500 hover:bg-white transition-all shadow-sm"
+                                            return (
+                                                <div
+                                                    key={`pr-${pr.id}`}
+                                                    className="group relative flex flex-col justify-between bg-white rounded-2xl border border-gray-100 p-3.5 transition-all duration-300 hover:shadow-xl hover:shadow-gray-100 hover:border-gray-200"
                                                 >
-                                                    {pr?.is_Liked ? (
-                                                        <FaHeart className="text-red-500 text-sm" />
-                                                    ) : (
-                                                        <FaRegHeart className="text-sm" />
-                                                    )}
-                                                </button>
-
-                                                {/* Product Image */}
-                                                <Link href={`/store/${pr.slug}`} className="w-full h-full flex items-center justify-center">
-                                                    <Image
-                                                        src={pr.image}
-                                                        alt={pr.name || 'Product Image'}
-                                                        width={180}
-                                                        height={180}
-                                                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 ease-out"
-                                                        unoptimized
-                                                    />
-                                                </Link>
-                                            </div>
-
-                                            {/* Product Info */}
-                                            <div className="flex flex-col grow">
-                                                <Link href={`/store/${pr.slug}`}>
-                                                    <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-10 hover:text-black transition-colors">
-                                                        {pr.name}
-                                                    </h3>
-                                                </Link>
-
-                                                {/* Price Section */}
-                                                <div className="mt-2 mb-3 flex items-baseline gap-2">
-                                                    <span className="text-base font-bold text-gray-900">
-                                                        ₦{discountedPrice.toLocaleString('en-NG')}
-                                                    </span>
-                                                    {pr.discount > 0 && (
-                                                        <span className="text-xs text-gray-400 line-through font-normal">
-                                                            ₦{pr.price.toLocaleString('en-NG')}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Action Buttons & Counter Controls */}
-                                            <div className="w-full mt-auto">
-                                                {pr.stock <= 0 ? (
-                                                    <button disabled className="w-full py-2 bg-gray-100 text-gray-400 text-xs font-semibold rounded-xl cursor-not-allowed">
-                                                        Out of Stock
-                                                    </button>
-                                                ) : inStock.length > 0 ? (
-                                                    <div className="w-full flex items-center justify-between bg-gray-900 text-white rounded-xl overflow-hidden p-1">
-                                                        <button
-                                                            onClick={() => handleRemoveVariation(pr, inStock[0]?.id)}
-                                                            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors"
-                                                        >
-                                                            -
-                                                        </button>
-                                                        <span className="text-xs font-semibold px-2">
-                                                            {isItemLoading(pr?.id, inStock[0]?.variations?.id, inStock[0]?.id) ? (
-                                                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                                            ) : (
-                                                                quantity
-                                                            )}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => handleAddVariations(pr)}
-                                                            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors"
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleAddVariations(pr)}
-                                                        className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-xl transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
-                                                    >
-                                                        {isItemLoading(pr?.id, null, null) ? (
-                                                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                                        ) : (
-                                                            "Add to Cart"
+                                                    {/* Top Badges & Heart Container */}
+                                                    <div className="relative w-full aspect-square bg-gray-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
+                                                        {/* Discount Badge */}
+                                                        {pr.discount > 0 && (
+                                                            <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                                                                -{pr.discount}%
+                                                            </span>
                                                         )}
-                                                    </button>
+
+                                                        {/* Wishlist Button */}
+                                                        <button
+                                                            onClick={() => handleLike(pr?.slug)}
+                                                            className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-md text-gray-700 hover:text-red-500 hover:bg-white transition-all shadow-sm"
+                                                        >
+                                                            {pr?.is_Liked ? (
+                                                                <FaHeart className="text-red-500 text-sm" />
+                                                            ) : (
+                                                                <FaRegHeart className="text-sm" />
+                                                            )}
+                                                        </button>
+
+                                                        {/* Product Image */}
+                                                        <Link href={`/${pr.slug}`} className="w-full h-full flex items-center justify-center">
+                                                            <Image
+                                                                src={pr.image}
+                                                                alt={pr.name || 'Product Image'}
+                                                                width={180}
+                                                                height={180}
+                                                                className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 ease-out"
+                                                                unoptimized
+                                                            />
+                                                        </Link>
+                                                    </div>
+
+                                                    {/* Product Info */}
+                                                    <div className="flex flex-col grow">
+                                                        <Link href={`/store/${pr.slug}`}>
+                                                            <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-10 hover:text-black transition-colors">
+                                                                {pr.name}
+                                                            </h3>
+                                                        </Link>
+
+                                                        {/* Price Section */}
+                                                        <div className="mt-2 mb-3 flex items-baseline gap-2">
+                                                            <span className="text-base font-bold text-gray-900">
+                                                                ₦{discountedPrice.toLocaleString('en-NG')}
+                                                            </span>
+                                                            {pr.discount > 0 && (
+                                                                <span className="text-xs text-gray-400 line-through font-normal">
+                                                                    ₦{pr.price.toLocaleString('en-NG')}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Action Buttons & Counter Controls */}
+                                                    <div className="w-full mt-auto">
+                                                        {pr.stock <= 0 ? (
+                                                            <button disabled className="w-full py-2 bg-gray-100 text-gray-400 text-xs font-semibold rounded-xl cursor-not-allowed">
+                                                                Out of Stock
+                                                            </button>
+                                                        ) : inStock.length > 0 ? (
+                                                            <div className="w-full flex items-center justify-between bg-gray-900 text-white rounded-xl overflow-hidden p-1">
+                                                                <button
+                                                                    onClick={() => handleRemoveVariation(pr, inStock[0]?.id)}
+                                                                    className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors"
+                                                                >
+                                                                    -
+                                                                </button>
+                                                                <span className="text-xs font-semibold px-2">
+                                                                    {isItemLoading(pr?.id, inStock[0]?.variations?.id, inStock[0]?.id) ? (
+                                                                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                                    ) : (
+                                                                        quantity
+                                                                    )}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => handleAddVariations(pr)}
+                                                                    className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors"
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleAddVariations(pr)}
+                                                                className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-xl transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                                                            >
+                                                                {isItemLoading(pr?.id, null, null) ? (
+                                                                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                                ) : (
+                                                                    "Add to Cart"
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        
+                                    </div>
+
+                                    {products?.length > 0 && (
+                                        <div className="flex flex-col gap-4 border-t border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                            <p className="text-xs text-gray-500">
+                                                Showing{" "}
+                                                <span className="font-medium text-gray-700">
+                                                    {(page - 1) * 8 + 1}
+                                                </span>
+                                                {" "} to{" "}
+                                                <span className="font-medium text-gray-700">
+                                                    {Math.min(page * 8, totalProducts)}
+                                                </span>
+                                                {" "} of{" "}
+                                                <span className="font-medium text-gray-700">
+                                                    {totalProducts}
+                                                </span>
+                                                {" "}orders
+                                            </p>
+                
+                                            <div className="flex items-center gap-1">
+                                                <button onClick={() => goToPage(page - 1)}
+                                                    disabled={!previousPage}
+                                                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                >
+                                                    <FiChevronLeft />
+                                                </button>
+                
+                                                {paginationPages.map((pageNumber,index) => pageNumber === "..." ? (
+                                                        <span key={`dots-${index}`}
+                                                            className="flex h-9 w-9 items-center justify-center text-xs text-gray-400"
+                                                        >
+                                                            ...
+                                                        </span>
+                                                    ) : (
+                                                        <button key={pageNumber} onClick={() => goToPage(pageNumber)}
+                                                            className={`h-9 min-w-9 rounded-lg px-2 text-xs font-medium transition ${page === pageNumber
+                                                                ? "bg-black text-white"
+                                                                : "text-gray-600 hover:bg-gray-100"
+                                                            }`}
+                                                        >
+                                                            {pageNumber}
+                                                        </button>
+                                                    )
                                                 )}
+                
+                                                <button onClick={() => goToPage(page + 1)}
+                                                    disabled={!nextPage}
+                                                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                >
+                                                    <FiChevronRight />
+                                                </button>
                                             </div>
                                         </div>
-                                    );
-                                })
-                            )}
-                        </div>
+                                    )}
+                                </>
+                            ):(<p>No Products</p>)   
+                        )}
+                        
                         {/* <button className='fixed bottom-5 text-12 cursor-pointer bg-[#333] py-1 px-5 w-30 rounded-xl text-white hidden max-[760px]:block'>filter</button> */}
                         <button className="sticky bottom-5 left-1/2 -translate-x-1/2 text-[13px] cursor-pointer bg-[#333] py-1.5 px-3 w-25 rounded-xl text-white hidden max-[760px]:block z-90"
-                         onClick={()=> setSHowFilter(true)}
+                         onClick={()=> handleShowMobileFilter()}
                         >
                             filter
                         </button>

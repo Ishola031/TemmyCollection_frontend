@@ -686,603 +686,134 @@ export default function InventoryPage() {
     };
 
     return (
-        <div
-            className="min-h-screen bg-gray-50 p-4 sm:p-6"
+        <main
+            className="min-h-screen min-w-0 bg-[#f5f7fb] px-3 py-5 text-slate-900 sm:px-6 sm:py-7 lg:px-8"
             onClick={() => setOpenMenu(null)}
         >
-            {/* HEADER */}
-
-            <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                        Inventory
-                    </h1>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                        Manage your products and stock
-                        levels.
-                    </p>
-                </div>
-
-                <button
-                    type="button"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
-                >
-                    <FiPlus size={17} />
-                    Add Product
-                </button>
-            </div>
-
-            {/* STAT CARDS */}
-
-            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-gray-200 bg-white p-5">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                        <FiPackage size={20} />
-                    </div>
-
-                    <p className="text-sm text-gray-500">
-                        Total Products
-                    </p>
-
-                    <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                        {statsLoading
-                            ? "..."
-                            : stats.total_products}
-                    </h2>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 bg-white p-5">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                        <FiShoppingBag size={20} />
-                    </div>
-
-                    <p className="text-sm text-gray-500">
-                        In Stock
-                    </p>
-
-                    <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                        {statsLoading
-                            ? "..."
-                            : stats.in_stock}
-                    </h2>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 bg-white p-5">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-50 text-yellow-600">
-                        <FiAlertTriangle size={20} />
-                    </div>
-
-                    <p className="text-sm text-gray-500">
-                        Low Stock
-                    </p>
-
-                    <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                        {statsLoading
-                            ? "..."
-                            : stats.low_stock}
-                    </h2>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 bg-white p-5">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                        <FiXCircle size={20} />
-                    </div>
-
-                    <p className="text-sm text-gray-500">
-                        Out of Stock
-                    </p>
-
-                    <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                        {statsLoading
-                            ? "..."
-                            : stats.out_of_stock}
-                    </h2>
-                </div>
-            </div>
-
-            {/* LOW STOCK ALERT */}
-
-            {!statsLoading &&
-                stats.low_stock > 0 && (
-                    <div className="mb-6 flex items-start gap-3 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
-                        <FiAlertTriangle
-                            className="mt-0.5 shrink-0 text-yellow-600"
-                            size={20}
-                        />
-
-                        <div>
-                            <h3 className="font-semibold text-yellow-800">
-                                Low stock alert
-                            </h3>
-
-                            <p className="mt-1 text-sm text-yellow-700">
-                                {stats.low_stock} product
-                                {stats.low_stock !== 1
-                                    ? "s are"
-                                    : " is"}{" "}
-                                running low on stock.
-                            </p>
+            <div className="mx-auto w-full max-w-[1500px] min-w-0">
+                <header className="mb-7 flex flex-col gap-5 rounded-[28px] bg-[#172554] p-5 text-white shadow-sm sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 sm:h-14 sm:w-14">
+                            <FiPackage size={25} />
                         </div>
+                        <div className="min-w-0">
+                            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Store operations</p>
+                            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Inventory</h1>
+                            <p className="mt-1 max-w-xl text-sm leading-6 text-blue-100/80">Keep product availability accurate and spot stock issues before they affect an order.</p>
+                        </div>
+                    </div>
+                    <Link href="/admin/dashboard/inventory/add" className="inline-flex min-h-11 items-center justify-center gap-2 self-stretch rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#172554] transition hover:bg-blue-50 sm:self-start lg:self-center">
+                        <FiPlus size={17} /> Add product
+                    </Link>
+                </header>
+
+                <section aria-label="Inventory summary" className="mb-7 grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_2px_12px_rgba(15,23,42,0.025)] sm:p-5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:text-sm">All products</span>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><FiPackage size={18} /></span>
+                        </div>
+                        <p className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">{statsLoading ? "—" : stats.total_products}</p>
+                        <p className="mt-1 text-xs text-slate-500">Products in your catalogue</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_2px_12px_rgba(15,23,42,0.025)] sm:p-5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:text-sm">In stock</span>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><FiShoppingBag size={18} /></span>
+                        </div>
+                        <p className="mt-4 text-2xl font-bold tracking-tight text-emerald-700 sm:text-3xl">{statsLoading ? "—" : stats.in_stock}</p>
+                        <p className="mt-1 text-xs text-slate-500">Available for customers</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_2px_12px_rgba(15,23,42,0.025)] sm:p-5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:text-sm">Low stock</span>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><FiAlertTriangle size={18} /></span>
+                        </div>
+                        <p className="mt-4 text-2xl font-bold tracking-tight text-amber-700 sm:text-3xl">{statsLoading ? "—" : stats.low_stock}</p>
+                        <p className="mt-1 text-xs text-slate-500">May need replenishing</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_2px_12px_rgba(15,23,42,0.025)] sm:p-5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:text-sm">Out of stock</span>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-700"><FiXCircle size={18} /></span>
+                        </div>
+                        <p className="mt-4 text-2xl font-bold tracking-tight text-rose-700 sm:text-3xl">{statsLoading ? "—" : stats.out_of_stock}</p>
+                        <p className="mt-1 text-xs text-slate-500">Currently unavailable</p>
+                    </div>
+                </section>
+
+                {!statsLoading && stats.low_stock > 0 && (
+                    <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-amber-950 sm:px-5">
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><FiAlertTriangle size={17} /></span>
+                        <div className="min-w-0"><p className="text-sm font-bold">Stock needs attention</p><p className="mt-1 text-sm leading-5 text-amber-800">{stats.low_stock} {stats.low_stock === 1 ? "product is" : "products are"} running low. Review the items below and update their quantities.</p></div>
                     </div>
                 )}
 
-            {/* FILTERS */}
-
-            <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4">
-                <div className="flex flex-col gap-3 lg:flex-row">
-                    <div className="relative flex-1">
-                        <FiSearch
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                            size={18}
-                        />
-
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(event) =>
-                                handleSearchChange(
-                                    event.target.value
-                                )
-                            }
-                            placeholder="Search products..."
-                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-gray-400 focus:bg-white"
-                        />
-                    </div>
-
-                    <div className="relative">
-                        <select
-                            value={category}
-                            onChange={(event) =>
-                                handleCategoryChange(
-                                    event.target.value
-                                )
-                            }
-                            className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm outline-none lg:min-w-[190px]"
-                        >
-                            <option value="">
-                                All categories
-                            </option>
-
-                            {categories.map((item) => (
-                                <option
-                                    key={item.id}
-                                    value={item.slug}
-                                >
-                                    {item.name}
-                                </option>
-                            ))}
-                        </select>
-
-                        <FiChevronDown
-                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                            size={17}
-                        />
-                    </div>
-
-                    <div className="relative">
-                        <select
-                            value={status}
-                            onChange={(event) =>
-                                handleStatusChange(
-                                    event.target.value
-                                )
-                            }
-                            className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm outline-none lg:min-w-[170px]"
-                        >
-                            {STATUS_OPTIONS.map(
-                                (item) => (
-                                    <option
-                                        key={item.value}
-                                        value={item.value}
-                                    >
-                                        {item.label}
-                                    </option>
-                                )
-                            )}
-                        </select>
-
-                        <FiChevronDown
-                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                            size={17}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* TABLE */}
-
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px]">
-                        <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50">
-                                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Product
-                                </th>
-
-                                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Category
-                                </th>
-
-                                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Price
-                                </th>
-
-                                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Stock
-                                </th>
-
-                                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Status
-                                </th>
-
-                                <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Action
-                                </th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {loading ? (
-                                Array.from({
-                                    length: 6,
-                                }).map((_, index) => (
-                                    <tr
-                                        key={index}
-                                        className="border-b border-gray-100"
-                                    >
-                                        <td className="px-5 py-5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-12 w-12 animate-pulse rounded-xl bg-gray-200" />
-
-                                                <div className="space-y-2">
-                                                    <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                                                    <div className="h-3 w-20 animate-pulse rounded bg-gray-100" />
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <div className="h-7 w-20 animate-pulse rounded-full bg-gray-200" />
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <div className="ml-auto h-8 w-8 animate-pulse rounded-lg bg-gray-200" />
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : error ? (
-                                <tr>
-                                    <td
-                                        colSpan={6}
-                                        className="px-5 py-16 text-center"
-                                    >
-                                        <p className="text-sm text-red-500">
-                                            {error}
-                                        </p>
-                                    </td>
-                                </tr>
-                            ) : products.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={6}
-                                        className="px-5 py-16 text-center"
-                                    >
-                                        <div className="flex flex-col items-center">
-                                            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                                                <FiPackage
-                                                    size={22}
-                                                    className="text-gray-400"
-                                                />
-                                            </div>
-
-                                            <h3 className="font-semibold text-gray-900">
-                                                No products
-                                                found
-                                            </h3>
-
-                                            <p className="mt-1 text-sm text-gray-500">
-                                                Try changing
-                                                your search
-                                                or filters.
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                products.map((product) => (
-                                    <tr
-                                        key={product.id}
-                                        className="border-b border-gray-100 transition hover:bg-gray-50"
-                                    >
-                                        <td className="px-5 py-5">
-                                            <div className="flex items-center gap-3">
-                                                {product.image ? (
-                                                    <img
-                                                        src={
-                                                            product.image
-                                                        }
-                                                        alt={
-                                                            product.name
-                                                        }
-                                                        className="h-12 w-12 rounded-xl object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
-                                                        <FiPackage
-                                                            size={
-                                                                20
-                                                            }
-                                                            className="text-gray-400"
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                <div className="min-w-0">
-                                                    <p className="max-w-[250px] truncate text-sm font-semibold text-gray-900">
-                                                        {
-                                                            product.name
-                                                        }
-                                                    </p>
-
-                                                    <p className="mt-1 text-xs text-gray-500">
-                                                        {product.has_variations
-                                                            ? `${product.variations?.length || 0} variations`
-                                                            : "No variations"}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <span className="text-sm text-gray-600">
-                                                {product.category
-                                                    ?.name ||
-                                                    "—"}
-                                            </span>
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <span className="text-sm font-medium text-gray-900">
-                                                {formatPrice(
-                                                    product.price
-                                                )}
-                                            </span>
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <div>
-                                                <p className="text-sm font-semibold text-gray-900">
-                                                    {
-                                                        product.total_stock
-                                                    }
-                                                </p>
-
-                                                {product.has_variations &&
-                                                    product
-                                                        .variations
-                                                        ?.length >
-                                                        0 && (
-                                                        <div className="mt-2 flex max-w-[260px] flex-wrap gap-1.5">
-                                                            {product.variations.map(
-                                                                (
-                                                                    variation
-                                                                ) => (
-                                                                    <span
-                                                                        key={
-                                                                            variation.id
-                                                                        }
-                                                                        className={`rounded-md bg-gray-100 px-2 py-1 text-[11px] ${getVariationStockStyle(
-                                                                            variation.stock
-                                                                        )}`}
-                                                                    >
-                                                                        {variation.name ||
-                                                                            "Variation"}{" "}
-                                                                        :{" "}
-                                                                        {
-                                                                            variation.stock
-                                                                        }
-                                                                    </span>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    )}
-                                            </div>
-                                        </td>
-
-                                        <td className="px-5 py-5">
-                                            <span
-                                                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(
-                                                    product.status
-                                                )}`}
-                                            >
-                                                {getStatusLabel(
-                                                    product.status
-                                                )}
-                                            </span>
-                                        </td>
-
-                                        <td className="px-5 py-5 text-right">
-                                            <div
-                                                className="relative inline-block"
-                                                onClick={(event) =>
-                                                    event.stopPropagation()
-                                                }
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setOpenMenu(
-                                                            openMenu ===
-                                                                product.id
-                                                                ? null
-                                                                : product.id
-                                                        )
-                                                    }
-                                                    className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
-                                                >
-                                                    <FiMoreHorizontal
-                                                        size={20}
-                                                    />
-                                                </button>
-
-                                                {openMenu ===
-                                                    product.id && (
-                                                    <div className="absolute right-0 z-40 mt-2 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 text-left shadow-xl">
-                                                        <button type="button" onClick={() => handleUpdateStock(product)}
-                                                            className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                                                        >
-                                                            <FiPackage size={17}/>
-                                                            Update Stock
-                                                        </button>
-
-                                                        <Link href={`/admin/dashboard/inventory/${product?.slug}`} className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50">
-                                                            <FiEye size={17}/>
-                                                            View Product
-                                                        </Link>
-
-                                                        <Link href={`/admin/dashboard/inventory/${product?.slug}/edit`} className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50">
-                                                            <FiEdit3 size={17}/>
-                                                            Update Order
-                                                        </Link>
-
-                                                        <div className="my-1 border-t border-gray-100" />
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                handleDelete(
-                                                                    product
-                                                                )
-                                                            }
-                                                            className="flex w-full items-center gap-3 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50"
-                                                        >
-                                                            <FiTrash2
-                                                                size={
-                                                                    17
-                                                                }
-                                                            />
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* PAGINATION */}
-
-                {!loading &&
-                    products.length > 0 &&
-                    totalPages > 1 && (
-                        <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-100 px-5 py-4 sm:flex-row">
-                            <p className="text-sm text-gray-500">
-                                Showing{" "}
-                                <span className="font-medium text-gray-700">
-                                    {(page - 1) *
-                                        pageSize +
-                                        1}
-                                </span>{" "}
-                                to{" "}
-                                <span className="font-medium text-gray-700">
-                                    {Math.min(
-                                        page *
-                                            pageSize,
-                                        pagination.count
-                                    )}
-                                </span>{" "}
-                                of{" "}
-                                <span className="font-medium text-gray-700">
-                                    {
-                                        pagination.count
-                                    }
-                                </span>{" "}
-                                products
-                            </p>
-
-                            <div className="flex items-center gap-1">
-                                <button
-                                    type="button"
-                                    disabled={
-                                        !pagination.previous
-                                    }
-                                    onClick={() =>
-                                        setPage(
-                                            (current) =>
-                                                Math.max(
-                                                    1,
-                                                    current -
-                                                        1
-                                                )
-                                        )
-                                    }
-                                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                    Previous
-                                </button>
-
-                                {getPageNumbers().map(
-                                    (pageNumber) => (
-                                        <button
-                                            key={
-                                                pageNumber
-                                            }
-                                            type="button"
-                                            onClick={() =>
-                                                setPage(
-                                                    pageNumber
-                                                )
-                                            }
-                                            className={`h-9 min-w-9 rounded-lg px-2 text-sm font-medium transition ${
-                                                page ===
-                                                pageNumber
-                                                    ? "bg-black text-white"
-                                                    : "text-gray-600 hover:bg-gray-100"
-                                            }`}
-                                        >
-                                            {
-                                                pageNumber
-                                            }
-                                        </button>
-                                    )
-                                )}
-
-                                <button
-                                    type="button"
-                                    disabled={
-                                        !pagination.next
-                                    }
-                                    onClick={() =>
-                                        setPage(
-                                            (current) =>
-                                                current + 1
-                                        )
-                                    }
-                                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                    Next
-                                </button>
-                            </div>
+                <section className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_4px_24px_rgba(15,23,42,0.035)]">
+                    <div className="border-b border-slate-100 p-4 sm:p-6">
+                        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                            <div><h2 className="text-lg font-bold tracking-tight sm:text-xl">Product stock</h2><p className="mt-1 text-sm text-slate-500">Search, filter and manage each item in your store.</p></div>
+                            <p className="text-xs font-medium text-slate-500">{pagination.count} {pagination.count === 1 ? "product" : "products"} total</p>
                         </div>
+                        <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(170px,0.45fr)_minmax(150px,0.4fr)]">
+                            <label className="relative block min-w-0">
+                                <span className="sr-only">Search products</span><FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input type="search" value={search} onChange={(event) => handleSearchChange(event.target.value)} placeholder="Search by product name…" className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50" />
+                            </label>
+                            <label className="relative block min-w-0"><span className="sr-only">Filter by category</span><select value={category} onChange={(event) => handleCategoryChange(event.target.value)} className="h-11 w-full min-w-0 appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-sm text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"><option value="">All categories</option>{categories.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select><FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /></label>
+                            <label className="relative block min-w-0"><span className="sr-only">Filter by stock status</span><select value={status} onChange={(event) => handleStatusChange(event.target.value)} className="h-11 w-full min-w-0 appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-sm text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50">{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /></label>
+                        </div>
+                    </div>
+
+                    <div className="p-3 sm:p-5 lg:p-6">
+                        {loading ? (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="animate-pulse rounded-2xl border border-slate-200 p-4"><div className="flex gap-3"><div className="h-20 w-20 rounded-xl bg-slate-100" /><div className="flex-1"><div className="h-4 w-3/4 rounded bg-slate-100" /><div className="mt-3 h-3 w-1/2 rounded bg-slate-100" /><div className="mt-4 h-4 w-1/3 rounded bg-slate-100" /></div></div><div className="mt-5 h-14 rounded-xl bg-slate-50" /></div>)}</div>
+                        ) : error ? (
+                            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-8 text-center"><FiAlertTriangle className="mx-auto text-rose-600" size={24} /><p className="mt-3 text-sm font-semibold text-rose-800">{error}</p><button type="button" onClick={() => { fetchCurrentProducts(); fetchStats(); }} className="mt-3 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-rose-700 ring-1 ring-rose-200">Try again</button></div>
+                        ) : products.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-14 text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500"><FiPackage size={22} /></span><h3 className="mt-4 font-bold text-slate-900">No products found</h3><p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-slate-500">Try another search or remove one of the filters to see more products.</p></div>
+                        ) : (
+                            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                                {products.map((product) => (
+                                    <article key={product.id} className="group flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.07)] sm:p-5">
+                                        <div className="flex min-w-0 items-start gap-3">
+                                            <div className="flex h-[76px] w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200/70">{product.image ? <img src={product.image} alt={product.name || "Product"} className="h-full w-full object-cover" /> : <FiPackage size={25} className="text-slate-400" />}</div>
+                                            <div className="min-w-0 flex-1 pt-0.5">
+                                                <p className="break-words text-[15px] font-bold leading-5 text-slate-900">{product.name || "Untitled product"}</p>
+                                                <p className="mt-1.5 break-words text-xs leading-5 text-slate-500">{product.category?.name || "Uncategorised"}</p>
+                                                <div className="mt-2"><span className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(product.status)}`}>{getStatusLabel(product.status)}</span></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-5 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5">
+                                            <div className="min-w-0 border-r border-slate-200 pr-2"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Selling price</p><p className="mt-1.5 break-words text-base font-extrabold tracking-tight text-slate-900">{formatPrice(product.price)}</p></div>
+                                            <div className="min-w-0 pl-1"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Total units</p><p className={`mt-1.5 text-base font-extrabold tracking-tight ${(product.total_stock ?? 0) === 0 ? "text-rose-700" : (product.total_stock ?? 0) <= 10 ? "text-amber-700" : "text-slate-900"}`}>{product.total_stock ?? 0}<span className="ml-1 text-xs font-medium text-slate-500">units</span></p></div>
+                                        </div>
+
+                                        {product.has_variations && <div className="mt-4 min-w-0"><div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold text-slate-700">Variation stock</p><span className="shrink-0 text-[11px] text-slate-400">{product.variations?.length || 0} options</span></div>{product.variations?.length ? <div className="flex flex-wrap gap-1.5">{product.variations.map((variation) => <span key={variation.id} className={`max-w-full break-words rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold ${getVariationStockStyle(variation.stock)}`}>{variation.name || "Option"}: {variation.stock ?? 0}</span>)}</div> : <p className="text-xs text-slate-400">No variation details available.</p>}</div>}
+
+                                        <div className="mt-auto pt-5">
+                                            <button type="button" onClick={(event) => { event.stopPropagation(); handleUpdateStock(product); }} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#172554] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-blue-900"><FiPackage size={15} /> Update stock</button>
+                                            <div className="mt-2 grid grid-cols-2 gap-2"><Link href={`/admin/dashboard/inventory/${product?.slug}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-2 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"><FiEye size={14} /> View details</Link><Link href={`/admin/dashboard/inventory/${product?.slug}/edit`} onClick={(event) => event.stopPropagation()} className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-2 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"><FiEdit3 size={14} /> Edit product</Link></div>
+                                            <button type="button" onClick={(event) => { event.stopPropagation(); handleDelete(product); }} className="mt-2 inline-flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"><FiTrash2 size={13} /> Delete product</button>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {!loading && products.length > 0 && totalPages > 1 && (
+                        <footer className="flex flex-col gap-4 border-t border-slate-100 bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                            <p className="text-center text-xs text-slate-500 sm:text-left">Showing <span className="font-bold text-slate-800">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, pagination.count)}</span> of <span className="font-bold text-slate-800">{pagination.count}</span> products</p>
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                <button type="button" disabled={!pagination.previous} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+                                {getPageNumbers().map((pageNumber) => <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} className={`h-9 min-w-9 rounded-lg px-2 text-xs font-bold transition ${page === pageNumber ? "bg-[#172554] text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"}`}>{pageNumber}</button>)}
+                                <button type="button" disabled={!pagination.next} onClick={() => setPage((current) => current + 1)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+                            </div>
+                        </footer>
                     )}
+                </section>
             </div>
 
             {/* STOCK MODAL */}
@@ -1729,6 +1260,6 @@ export default function InventoryPage() {
                     </div>
                 </div>
             )}
-        </div>
+        </main>
     );
 }

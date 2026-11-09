@@ -11,23 +11,9 @@ import Dashboard from "../../../Components/Dashboard";
 import { useNotifications } from "../../../hook/notifications";
 import api from "../../../api/api";
 
-import {
-    FiBell,
-    FiPackage,
-    FiCreditCard,
-    FiInfo,
-    FiChevronRight,
-    FiX,
-    FiSearch,
-    FiArrowUpRight,
-    FiClock,
-    FiInbox,
-    FiCheckCircle,
-    FiExternalLink,
-} from "react-icons/fi";
+import { FiBell, FiPackage, FiCreditCard, FiInfo, FiChevronRight, FiX, FiSearch, FiArrowUpRight, FiClock, FiInbox, FiCheckCircle, FiExternalLink, } from "react-icons/fi";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const FILTERS = [
     { label: "All", value: "all" },
@@ -150,8 +136,7 @@ export default function InboxPage() {
 
     const [activeFilter, setActiveFilter] = useState("all");
     const [search, setSearch] = useState("");
-    const [selectedNotification, setSelectedNotification] =
-        useState(null);
+    const [selectedNotification, setSelectedNotification] = useState(null);
 
     useEffect(() => {
         let mounted = true;
@@ -204,18 +189,11 @@ export default function InboxPage() {
     }, []);
 
     // The hook remains the source of truth for initial and live notifications.
-    const { notifications } = useNotifications(
-        isAuthenticated,
-        initialNotifications
-    );
+    const { notifications } = useNotifications(isAuthenticated, initialNotifications);
 
-    const notificationList = Array.isArray(notifications)
-        ? notifications
-        : [];
+    const notificationList = Array.isArray(notifications) ? notifications : [];
 
-    const unreadCount = notificationList.filter(
-        (item) => !item.is_read
-    ).length;
+    const unreadCount = notificationList.filter((item) => !item.is_read).length;
 
     const categoryCounts = useMemo(() => {
         const counts = {
@@ -278,9 +256,7 @@ export default function InboxPage() {
 
     useEffect(() => {
         if (!selectedNotification) return;
-
         const previousOverflow = document.body.style.overflow;
-
         document.body.style.overflow = "hidden";
 
         function handleKeyDown(event) {
@@ -392,11 +368,8 @@ export default function InboxPage() {
     return (
         <>
             <section className="min-h-screen w-full bg-[#fafafa] px-4 pb-12 pt-28 sm:px-6 lg:px-10 lg:pt-24">
-                <div className="mx-auto flex max-w-[1440px] items-start gap-8">
-                    <Dashboard
-                        custom="inbox"
-                        display="hidden"
-                    />
+                <div className="mx-auto flex max-w-360 items-start gap-8">
+                    <Dashboard custom="inbox" display="hidden"/>
 
                     <main className="min-w-0 flex-1">
                         {/* Page heading */}
@@ -691,7 +664,7 @@ export default function InboxPage() {
             {/* Notification details */}
             {selectedNotification && (
                 <div
-                    className="fixed inset-0 z-[700] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-[3px]"
+                    className="fixed inset-0 z-700 flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-[3px]"
                     onMouseDown={(event) => {
                         if (event.target === event.currentTarget) {
                             closeModal();

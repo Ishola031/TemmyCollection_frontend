@@ -23,17 +23,29 @@ const Navbar = () => {
     const [showCategoryChild, setShowCategoryChild] = useState({});
     const [searchSuggestions, setSearchSuggestions] = useState({});
     const [search, setSearch] = useState("");
-    const [showSearchRecommendations, setShowSearchRecommendations] =
-        useState(false);
+    const [showSearchRecommendations, setShowSearchRecommendations] = useState(false);
     const [cartCount, setCartCount] = useState(0);
     const [unreadCount, setUnreadCount] = useState(0);
 
     const { data: cart } = useCart(isAuthenticated);
     const { data: category } = useCategory();
     const { data: recentSearches } = useRecentSearch(isAuthenticated);
+    const [loadingLogout, setLoadingLogout] = useState(false)
 
     const searchRef = useRef(null);
     const router = useRouter();
+
+    const handleLogout = async ()=> {
+        try{
+            setLoadingLogout(true)
+            const res = await api.post(`api/a/logout/`)
+            if(res.data.success === 'success') window.location.reload()
+        }catch(error){
+            console.log(error)
+        }finally{
+            setLoadingLogout(false)
+        }
+    }
 
     // INITIALIZE CATEGORY DROPDOWNS
     useEffect(() => {
@@ -92,44 +104,43 @@ const Navbar = () => {
     }, [cart]);
 
     // CUSTOMER NOTIFICATION UNREAD COUNT
-    // useEffect(() => {
-    //     if (!isAuthenticated) {
-    //         setUnreadCount(0);
-    //         return;
-    //     }
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setUnreadCount(0);
+            return;
+        }
 
-    //     let cancelled = false;
+        let cancelled = false;
 
-    //     const fetchUnreadCount = async () => {
-    //         try {
-    //             const response = await api.get(
-    //                 "/api/notifications/customer/unread-count/"
-    //             );
+        const fetchUnreadCount = async () => {
+            try {
+                const response = await api.get(
+                    "/api/notifications/customer/unread-count/"
+                );
 
-    //             if (!cancelled) {
-    //                 setUnreadCount(
-    //                     Number(response.data?.unread_count) || 0
-    //                 );
-    //             }
-    //         } catch (error) {
-    //             if (!cancelled) {
-    //                 console.error(
-    //                     "Failed to fetch customer notification count:",
-    //                     error
-    //                 );
-    //             }
-    //         }
-    //     };
+                if (!cancelled) {
+                    setUnreadCount(
+                        Number(response.data?.unread_count) || 0
+                    );
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error(
+                        "Failed to fetch customer notification count:",
+                        error
+                    );
+                }
+            }
+        };
 
-    //     fetchUnreadCount();
+        fetchUnreadCount();
+        const intervalId = setInterval(fetchUnreadCount, 30000);
 
-    //     const intervalId = setInterval(fetchUnreadCount, 30000);
-
-    //     return () => {
-    //         cancelled = true;
-    //         clearInterval(intervalId);
-    //     };
-    // }, [isAuthenticated]);
+        return () => {
+            cancelled = true;
+            clearInterval(intervalId);
+        };
+    }, [isAuthenticated]);
 
     // TOGGLE CATEGORY DROPDOWN
     const toggleCategoryChild = (catId) => {
@@ -195,19 +206,14 @@ const Navbar = () => {
     // NOTIFICATION BELL
     const NotificationBell = ({ mobile = false }) => (
         <Link
-            href={notificationLink}
-            aria-label={`Notifications, ${unreadCount} unread`}
-            className={
-                mobile
-                    ? "relative flex items-center justify-center text-[25px]"
-                    : "flex items-center gap-1.5 text-[17px]"
+            href={notificationLink} aria-label={`Notifications, ${unreadCount} unread`}
+            className={mobile
+                ? "relative flex items-center justify-center text-[25px]"
+                : "flex items-center gap-1.5 text-[17px]"
             }
         >
             <span className="relative inline-flex">
-                <IoNotificationsOutline
-                    className={mobile ? "text-[25px]" : "text-[23px]"}
-                />
-
+                <IoNotificationsOutline className={mobile ? "text-[25px]" : "text-[23px]"}/>
                 {unreadCount > 0 && (
                     <span className="absolute -right-2 -top-2 flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 py-0.5 text-[10px] leading-none text-white ring-2 ring-white">
                         {unreadCount > 99 ? "99+" : unreadCount}
@@ -222,7 +228,7 @@ const Navbar = () => {
     );
 
     return (
-        <nav className="fixed top-0 z-[400] flex w-full items-center justify-between gap-4 bg-white px-6 py-3 shadow-sm lg:gap-6 lg:px-10 max-[1100px]:px-4 max-[740px]:flex-col max-[740px]:items-stretch max-[740px]:gap-2 max-[740px]:px-4 max-[740px]:py-3">
+        <nav className="fixed top-0 z-400 flex w-full items-center justify-between gap-4 bg-white px-6 py-3 shadow-sm lg:gap-6 lg:px-10 max-[1100px]:px-4 max-[740px]:flex-col max-[740px]:items-stretch max-[740px]:gap-2 max-[740px]:px-4 max-[740px]:py-3">
             {/* BRAND AND MOBILE NAVIGATION */}
             <div className="flex shrink-0 items-center max-[740px]:w-full max-[740px]:justify-between">
                 <div className="flex min-w-0 items-center">
@@ -268,173 +274,166 @@ const Navbar = () => {
 
             {/* SEARCH + CUSTOMER NOTIFICATIONS */}
             <div className="flex min-w-0 flex-1 items-center gap-3 max-[740px]:w-full max-[740px]:flex-col max-[740px]:items-stretch">
-            <div
-                ref={searchRef}
-                className="relative flex min-w-0 flex-1 items-center max-[740px]:w-full"
-            >
-                <form
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        handleSearch();
-                    }}
-                    className="relative z-30 flex w-full min-w-0 items-center rounded-2xl bg-[#eee] pl-2.5"
+                <div
+                    ref={searchRef}
+                    className="relative flex min-w-0 flex-1 items-center max-[740px]:w-full"
                 >
-                    <IoSearch className="mr-1 text-lg text-gray-500" />
-
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        onFocus={() => setShowSearchRecommendations(true)}
-                        placeholder="Search products, brands and categories"
-                        className="w-full border-0 bg-transparent px-1 py-2.5 text-[14px] outline-0"
-                    />
-
-                    {search && (
-                        <button
-                            type="button"
-                            onClick={clearSearch}
-                            aria-label="Clear search"
-                            className="mr-2 cursor-pointer text-xl text-gray-500 hover:text-black"
-                        >
-                            <IoMdClose />
-                        </button>
-                    )}
-
-                    <button
-                        type="submit"
-                        aria-label="Search"
-                        className="flex h-10 w-20 min-w-20 cursor-pointer items-center justify-center rounded-r-2xl bg-blue-600 text-2xl text-white"
+                    <form
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            handleSearch();
+                        }}
+                        className="relative z-30 flex w-full min-w-0 items-center rounded-2xl bg-[#eee] pl-2.5"
                     >
-                        <IoSearch />
-                    </button>
-                </form>
+                        <IoSearch className="mr-1 text-lg text-gray-500" />
 
-                {/* SEARCH RECOMMENDATIONS */}
-                {showSearchRecommendations && (
-                    <div className="absolute top-10.75 right-0 left-0 z-20 overflow-hidden rounded-b-xl border border-gray-100 bg-white shadow-xl">
-                        {!search.trim() && (
-                            <div className="py-3">
-                                {recentSearches?.results?.length > 0 && (
-                                    <div>
-                                        <div className="flex items-center justify-between px-4 py-2">
-                                            <h3 className="text-[14px] font-semibold">
-                                                {recentSearches.results.length === 1
-                                                    ? "Recent search"
-                                                    : "Recent searches"}
-                                            </h3>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            onFocus={() => setShowSearchRecommendations(true)}
+                            placeholder="Search products, brands and categories"
+                            className="w-full border-0 bg-transparent px-1 py-2.5 text-[14px] outline-0"
+                        />
 
-                                            <button
-                                                type="button"
-                                                onClick={() => {}}
-                                                className="cursor-pointer text-xs text-blue-600"
-                                            >
-                                                Clear
-                                            </button>
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={clearSearch}
+                                aria-label="Clear search"
+                                className="mr-2 cursor-pointer text-xl text-gray-500 hover:text-black"
+                            >
+                                <IoMdClose />
+                            </button>
+                        )}
+
+                        <button
+                            type="submit"
+                            aria-label="Search"
+                            className="flex h-10 w-20 min-w-20 cursor-pointer items-center justify-center rounded-r-2xl bg-blue-600 text-2xl text-white"
+                        >
+                            <IoSearch />
+                        </button>
+                    </form>
+
+                    {/* SEARCH RECOMMENDATIONS */}
+                    {showSearchRecommendations && (
+                        <div className="absolute top-10.75 right-0 left-0 z-20 overflow-hidden rounded-b-xl border border-gray-100 bg-white shadow-xl">
+                            {!search.trim() && (
+                                <div className="py-3">
+                                    {recentSearches?.results?.length > 0 && (
+                                        <div>
+                                            <div className="flex items-center justify-between px-4 py-2">
+                                                <h3 className="text-[14px] font-semibold">
+                                                    {recentSearches.results.length === 1
+                                                        ? "Recent search"
+                                                        : "Recent searches"}
+                                                </h3>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {}}
+                                                    className="cursor-pointer text-xs text-blue-600"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+
+                                            {recentSearches.results.map((item) => (
+                                                <button
+                                                    type="button"
+                                                    key={item.id}
+                                                    onClick={() => handleSearch(item.keyword)}
+                                                    className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
+                                                >
+                                                    <IoSearch className="text-gray-400" />
+                                                    <span className="text-sm text-gray-700">
+                                                        {item.keyword}
+                                                    </span>
+                                                </button>
+                                            ))}
                                         </div>
+                                    )}
 
-                                        {recentSearches.results.map((item) => (
+                                    <div className="mt-2">
+                                        <h3 className="px-4 py-2 text-[14px] font-semibold">
+                                            Popular searches
+                                        </h3>
+
+                                        {[
+                                            "Sneakers",
+                                            "Smart watches",
+                                            "Phones",
+                                            "Men shirts",
+                                            "Women dresses",
+                                        ].map((item) => (
                                             <button
                                                 type="button"
-                                                key={item.id}
-                                                onClick={() => handleSearch(item.keyword)}
+                                                key={item}
+                                                onClick={() => handleSearch(item)}
                                                 className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
                                             >
                                                 <IoSearch className="text-gray-400" />
                                                 <span className="text-sm text-gray-700">
-                                                    {item.keyword}
+                                                    {item}
                                                 </span>
                                             </button>
                                         ))}
                                     </div>
-                                )}
+                                </div>
+                            )}
 
-                                <div className="mt-2">
+                            {search.trim() && (
+                                <div className="py-2">
                                     <h3 className="px-4 py-2 text-[14px] font-semibold">
-                                        Popular searches
+                                        Search suggestions
                                     </h3>
 
-                                    {[
-                                        "Sneakers",
-                                        "Smart watches",
-                                        "Phones",
-                                        "Men shirts",
-                                        "Women dresses",
-                                    ].map((item) => (
-                                        <button
-                                            type="button"
-                                            key={item}
-                                            onClick={() => handleSearch(item)}
-                                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
+                                    {searchSuggestions?.suggestions?.map((suggestion) => (
+                                        <Link
+                                            key={suggestion.slug || suggestion.text}
+                                            href={`/catalog/?q=${encodeURIComponent(suggestion.text || "")}`}
+                                            onClick={() =>
+                                                setShowSearchRecommendations(false)
+                                            }
+                                            className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-gray-50"
                                         >
                                             <IoSearch className="text-gray-400" />
                                             <span className="text-sm text-gray-700">
-                                                {item}
+                                                {suggestion.text}
                                             </span>
-                                        </button>
+                                        </Link>
                                     ))}
-                                </div>
-                            </div>
-                        )}
 
-                        {search.trim() && (
-                            <div className="py-2">
-                                <h3 className="px-4 py-2 text-[14px] font-semibold">
-                                    Search suggestions
-                                </h3>
-
-                                {searchSuggestions?.suggestions?.map((suggestion) => (
-                                    <Link
-                                        key={suggestion.slug || suggestion.text}
-                                        href={`/catalog/?q=${encodeURIComponent(suggestion.text || "")}`}
-                                        onClick={() =>
-                                            setShowSearchRecommendations(false)
-                                        }
-                                        className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-gray-50"
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSearch()}
+                                        className="mt-1 flex w-full cursor-pointer items-center gap-3 border-t px-4 py-3 text-left hover:bg-gray-50"
                                     >
-                                        <IoSearch className="text-gray-400" />
-                                        <span className="text-sm text-gray-700">
-                                            {suggestion.text}
+                                        <IoSearch className="text-blue-600" />
+                                        <span className="text-sm">
+                                            Search for <strong>"{search}"</strong>
                                         </span>
-                                    </Link>
-                                ))}
-
-                                <button
-                                    type="button"
-                                    onClick={() => handleSearch()}
-                                    className="mt-1 flex w-full cursor-pointer items-center gap-3 border-t px-4 py-3 text-left hover:bg-gray-50"
-                                >
-                                    <IoSearch className="text-blue-600" />
-                                    <span className="text-sm">
-                                        Search for <strong>"{search}"</strong>
-                                    </span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* <div className="flex shrink-0 items-center max-[740px]:w-full max-[740px]:justify-start max-[740px]:border-t max-[740px]:border-gray-200 max-[740px]:py-2">
-                <EnableCustomerNotifications />
-            </div> */}
-
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* DESKTOP NAVIGATION */}
             <div className="flex shrink-0 gap-4 max-[740px]:hidden">
                 {isAuthenticated && <NotificationBell />}
 
-                <Link
-                    href="/dashboard"
+                <Link href="/dashboard"
                     className="flex items-center gap-1 text-[17px]"
                 >
                     <AiOutlineUser className="text-[23px]" />
                     <span className="max-[860px]:hidden">Account</span>
                 </Link>
 
-                <Link
-                    href="/cart"
+                <Link href="/cart"
                     className="relative flex items-center gap-1.5 text-[17px]"
                 >
                     <IoCartOutline className="text-[23px]" />
@@ -452,9 +451,7 @@ const Navbar = () => {
             {/* CATEGORY SIDEBAR */}
             {showCategory && (
                 <div className="fixed inset-0 z-50 flex items-start">
-                    <button
-                        type="button"
-                        aria-label="Close categories menu"
+                    <button type="button" aria-label="Close categories menu"
                         className="absolute inset-0 cursor-pointer bg-black/40 backdrop-blur-sm"
                         onClick={() => setShowCategory(false)}
                     />
@@ -465,9 +462,7 @@ const Navbar = () => {
                                 Temmy <span className="text-blue-600">Collection</span>
                             </h4>
 
-                            <button
-                                type="button"
-                                aria-label="Close menu"
+                            <button type="button" aria-label="Close menu"
                                 className="ml-2 cursor-pointer text-[26px] focus:outline-none"
                                 onClick={() => setShowCategory(false)}
                             >
@@ -477,26 +472,20 @@ const Navbar = () => {
 
                         {/* ACCOUNT LINKS */}
                         <div className="h-auto w-full pb-3">
-                            <Link
-                                href="/dashboard"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/dashboard" onClick={() => setShowCategory(false)}
                                 className="block w-full border-t border-[#aaa] px-4 pt-3 py-2 text-[14px] font-semibold"
                             >
                                 TEMMY COLLECTION ACCOUNT
                             </Link>
 
-                            <Link
-                                href="/dashboard/order"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/dashboard/order" onClick={() => setShowCategory(false)}
                                 className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-3"
                             >
                                 <TfiPackage className="text-[20px] font-medium" />
                                 <span className="text-[15px]">Orders</span>
                             </Link>
 
-                            <Link
-                                href="/dashboard/inbox"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/dashboard/inbox" onClick={() => setShowCategory(false)}
                                 className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-3"
                             >
                                 <FaInbox className="text-[20px]" />
@@ -509,9 +498,7 @@ const Navbar = () => {
                                 )}
                             </Link>
 
-                            <Link
-                                href="/dashboard/wishlist"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/dashboard/wishlist" onClick={() => setShowCategory(false)}
                                 className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-3"
                             >
                                 <FaRegHeart className="text-[20px]" />
@@ -521,9 +508,7 @@ const Navbar = () => {
 
                         {/* CATEGORIES */}
                         <div>
-                            <Link
-                                href="/"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/" onClick={() => setShowCategory(false)}
                                 className="block border-t border-[#aaa] px-4 py-2 text-[14px] font-semibold"
                             >
                                 OUR CATEGORIES
@@ -535,13 +520,10 @@ const Navbar = () => {
                                         showCategoryChild[`category_${cat.id}`];
 
                                     return (
-                                        <div
-                                            key={`cat-${cat.id}`}
+                                        <div key={`cat-${cat.id}`}
                                             className="w-full border-b border-gray-50 last:border-0"
                                         >
-                                            <button
-                                                type="button"
-                                                onClick={() =>
+                                            <button type="button" onClick={() =>
                                                     toggleCategoryChild(cat.id)
                                                 }
                                                 className="flex w-full cursor-pointer items-center justify-between px-6 py-3 text-left transition-colors hover:bg-gray-50"
@@ -589,29 +571,34 @@ const Navbar = () => {
                         <div>
                             <div className="border-t border-[#aaa] px-4 py-2" />
 
-                            <Link
-                                href="/"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/" onClick={() => setShowCategory(false)}
                                 className="flex w-full items-center gap-2.5 px-4 py-2"
                             >
                                 <span className="text-[17px]">Service Center</span>
                             </Link>
 
-                            <Link
-                                href="/"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/" onClick={() => setShowCategory(false)}
                                 className="flex w-full items-center gap-2.5 px-4 py-2"
                             >
                                 <span className="text-[17px]">Contact us</span>
                             </Link>
 
-                            <Link
-                                href="/"
-                                onClick={() => setShowCategory(false)}
+                            <Link href="/" onClick={() => setShowCategory(false)}
                                 className="flex w-full items-center gap-2.5 px-4 py-2"
                             >
                                 <span className="text-[17px]">About us</span>
                             </Link>
+                            <button 
+                                className="flex w-full items-center gap-2.5 px-4 py-2 cursor-pointer"
+                            >
+                                {loadingLogout? (
+                                    // <div className="h-5.5 w-5.5 animate-spin rounded-full border-4 border-gray-200 border-t-[#333]" />
+                                    <span className="text-[17px]">Logging out</span>
+                                ):(
+                                    <span className="text-[17px]">Log out</span>
+                                )}
+                                
+                            </button>
                         </div>
                     </div>
                 </div>

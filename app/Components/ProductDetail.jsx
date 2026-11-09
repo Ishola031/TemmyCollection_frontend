@@ -4,31 +4,27 @@ import React, {
     useContext,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react"
 import Link from "next/link"
 import { FaHeart, FaRegHeart } from "react-icons/fa"
 import {
-    Star,
-    StarHalf,
-    Minus,
-    Plus,
-    ShoppingBag,
-    Check,
-    ChevronRight,
-    ChevronLeft,
-} from "lucide-react"
+    FiMoreHorizontal,
+    FiEdit2,
+    FiTrash2,
+    FiX,
+    FiStar,
+    FiMessageSquare,
+} from "react-icons/fi";
+import { Star, StarHalf, Minus, Plus, ShoppingBag, Check, ChevronRight, ChevronLeft,} from "lucide-react"
 
 import api from "../api/api"
 import Message from "./Message"
 import { AuthContext } from "./IsAuth"
 import CollectionProduct from "../Components/Include/CollectionProduct"
 import { useProductDetail } from "../hook/useProductDetails"
-import {
-    useAddToCartItem,
-    useCart,
-    useRemoveCartItem,
-} from "../hook/useCart"
+import { useAddToCartItem, useCart, useRemoveCartItem,} from "../hook/useCart"
 import { useProductDetailLike } from "../hook/useProductLike"
 import { useRouter } from "next/navigation"
 import { useAddProductView } from "../hook/UserProductView"
@@ -65,9 +61,7 @@ function DisplayStars({ rating }) {
 
 function PlayStoreStarInput({ rating, onSelectRating }) {
     const [hoverValue, setHoverValue] = useState(null)
-
-    const activeRating =
-        hoverValue !== null ? hoverValue : rating
+    const activeRating = hoverValue !== null ? hoverValue : rating
 
     return (
         <div className="flex items-center gap-1">
@@ -75,19 +69,16 @@ function PlayStoreStarInput({ rating, onSelectRating }) {
                 const isSelected = activeRating >= starIndex
 
                 return (
-                    <button
-                        key={starIndex}
-                        type="button"
+                    <button key={starIndex} type="button"
                         className="p-1 cursor-pointer transition-transform hover:scale-110"
                         onMouseEnter={() => setHoverValue(starIndex)}
                         onMouseLeave={() => setHoverValue(null)}
                         onClick={() => onSelectRating(starIndex)}
                     >
                         <Star
-                            className={`w-7 h-7 ${
-                                isSelected
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "fill-gray-100 text-gray-300"
+                            className={`w-7 h-7 ${isSelected
+                                ? "fill-amber-400 text-amber-400"
+                                : "fill-gray-100 text-gray-300"
                             }`}
                         />
                     </button>
@@ -108,6 +99,9 @@ const ProductDetail = ({ slug }) => {
     const [selectedColor, setSelectedColor] = useState(0)
     const [selectedSize, setSelectedSize] = useState(0)
 
+    const [editingReview, setEditingReview] = useState(null)
+    const reviewFormRef = useRef(null)
+
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState(null)
 
@@ -123,38 +117,30 @@ const ProductDetail = ({ slug }) => {
     const [product, setProduct] = useState({})
     const [selectedImage, setSelectedImage] = useState(0)
 
-    const { isAuthenticated } = useContext(AuthContext)
-
+    const { isAuthenticated, user } = useContext(AuthContext)
+    console.log(user)
     const { data: cart } = useCart(isAuthenticated)
     const { data, isLoading } = useProductDetail(slug)
+    const [userHasReview, setUserHasReview] = useState(false)
 
     const productDetailLike = useProductDetailLike()
-
-    const addcartfetch = useAddToCartItem(
-        isAuthenticated,
-        setMessage
-    )
-
-    const handleCartItemDecrement =
-        useRemoveCartItem(isAuthenticated)
+    const addcartfetch = useAddToCartItem( isAuthenticated, setMessage)
+    const handleCartItemDecrement = useRemoveCartItem(isAuthenticated)
 
     const addproductViewed = useAddProductView()
-
     const router = useRouter()
 
 
     useEffect(() => {
         if (data?.product) {
             setProduct(data.product)
+            setUserHasReview(data?.user_has_review || false)
             setSelectedImage(0)
         }
     }, [data])
 
 
-    /*
-    PRODUCT IMAGES
-    */
-
+    /* PRODUCT IMAGES */
     const productImages = useMemo(() => {
         const images = []
 
@@ -166,32 +152,20 @@ const ProductDetail = ({ slug }) => {
             })
         }
 
-        if (
-            product?.image &&
-            !images.includes(product.image)
-        ) {
+        if (product?.image && !images.includes(product.image)) {
             images.unshift(product.image)
         }
-
         return images
     }, [product])
 
 
-    const activeImage =
-        productImages[selectedImage] ||
-        product?.image ||
-        "/images/product-placeholder.jpg"
+    const activeImage = productImages[selectedImage] || product?.image || "/images/product-placeholder.jpg"
 
-
-    /*
-    AVAILABLE COLORS
-    */
-
+    /* AVAILABLE COLORS */
     const availableColors = useMemo(() => {
         if (!product?.variations) return []
 
         const unique = {}
-
         product.variations.forEach((v) => {
             if (v.color) {
                 unique[v.color.id] = v.color
@@ -202,10 +176,7 @@ const ProductDetail = ({ slug }) => {
     }, [product])
 
 
-    /*
-    AVAILABLE SIZES
-    */
-
+    /* AVAILABLE SIZES */
     const availableSizes = useMemo(() => {
         if (!product?.variations || !selectedColor) {
             return []
@@ -213,34 +184,23 @@ const ProductDetail = ({ slug }) => {
 
         const unique = {}
 
-        product.variations
-            .filter(
-                (v) =>
-                    v.color?.id === selectedColor
-            )
-            .forEach((v) => {
-                if (v.size) {
-                    unique[v.size.id] = v.size
-                }
-            })
+        product.variations.filter((v) => v.color?.id === selectedColor).forEach((v) => {
+            if (v.size) {
+                unique[v.size.id] = v.size
+            }
+        })
 
         return Object.values(unique)
     }, [product, selectedColor])
 
 
-    /*
-    RESET SIZE
-    */
-
+    /* RESET SIZE */
     useEffect(() => {
         setSelectedSize(0)
     }, [selectedColor])
 
 
-    /*
-    SELECTED VARIANT
-    */
-
+    /* SELECTED VARIANT */
     const selectedVariant = useMemo(() => {
         if (!selectedColor) return null
 
@@ -254,17 +214,10 @@ const ProductDetail = ({ slug }) => {
 
             return v.color?.id === selectedColor
         })
-    }, [
-        product,
-        selectedColor,
-        selectedSize,
-    ])
+    }, [ product, selectedColor, selectedSize])
 
 
-    /*
-    CART ITEM
-    */
-
+    /* CART ITEM */
     const inCartItem = useMemo(() => {
         if (product?.variations?.length > 0) {
             if (!cart?.cartitems || !selectedVariant) {
@@ -295,41 +248,17 @@ const ProductDetail = ({ slug }) => {
     ])
 
 
-    /*
-    PRICE
-    */
+    /* PRICE */
+    const currentPrice = selectedVariant?.price || product?.price || 0
 
-    const currentPrice =
-        selectedVariant?.price ||
-        product?.price ||
-        0
+    const discountedPrice = product?.discount > 0 ? ((100 - product.discount) / 100) * currentPrice : currentPrice
 
-    const discountedPrice =
-        product?.discount > 0
-            ? ((100 - product.discount) / 100) *
-              currentPrice
-            : currentPrice
+    /* STOCK */
+    const currentStock = selectedVariant?.stock ?? product?.stock ?? 0
 
 
-    /*
-    STOCK
-    */
-
-    const currentStock =
-        selectedVariant?.stock ??
-        product?.stock ??
-        0
-
-
-    /*
-    ADD TO CART
-    */
-
-    const handleAddToCart = (
-        productId,
-        variation,
-        cartItemId = null
-    ) => {
+    /* ADD TO CART */
+    const handleAddToCart = ( productId, variation, cartItemId = null) => {
         addcartfetch.mutate({
             product: productId,
             variation,
@@ -338,16 +267,9 @@ const ProductDetail = ({ slug }) => {
     }
 
 
-    /*
-    REMOVE FROM CART
-    */
-
-    const handleRemoveCartItem = (
-        cartitemId,
-        deleteItem = false
-    ) => {
-        const resolvedCartId =
-            localStorage.getItem("cart_id")
+    /* REMOVE FROM CART */
+    const handleRemoveCartItem = ( cartitemId, deleteItem = false) => {
+        const resolvedCartId = localStorage.getItem("cart_id")
 
         handleCartItemDecrement.mutate({
             cartitemId,
@@ -357,51 +279,32 @@ const ProductDetail = ({ slug }) => {
     }
 
 
-    /*
-    CART ACTION
-    */
-
+    /* CART ACTION */
     const HandleStock = (assign) => {
         if (assign === "add") {
-            if (
-                availableColors.length > 0 &&
-                !selectedColor
-            ) {
+            if ( availableColors.length > 0 && !selectedColor) {
                 setMessage("Please select a color")
                 return
             }
 
-            if (
-                availableSizes.length > 0 &&
-                !selectedSize
-            ) {
+            if ( availableSizes.length > 0 && !selectedSize) {
                 setMessage("Please select a size")
                 return
             }
 
-            handleAddToCart(
-                product.id,
-                selectedVariant?.id || null,
-                cart
-            )
-
+            handleAddToCart( product.id, selectedVariant?.id || null, cart)
             return
         }
 
         if (assign === "substract") {
             if (!inCartItem?.id) return
 
-            handleRemoveCartItem(
-                inCartItem.id
-            )
+            handleRemoveCartItem(inCartItem.id)
         }
     }
 
 
-    /*
-    LIKE
-    */
-
+    /* LIKE */
     const handleLike = (productSlug) => {
         if (!isAuthenticated) {
             router.push("/signin")
@@ -414,10 +317,7 @@ const ProductDetail = ({ slug }) => {
     }
 
 
-    /*
-    REVIEWS
-    */
-
+    /* REVIEWS */
     useEffect(() => {
         const fetchReviews = async () => {
             setReviewLoading(true)
@@ -443,10 +343,7 @@ const ProductDetail = ({ slug }) => {
     }, [product])
 
 
-    /*
-    ADD REVIEW
-    */
-
+    /* ADD REVIEW */
     const Review = async () => {
         try {
             setAddReviewLoading(true)
@@ -461,14 +358,17 @@ const ProductDetail = ({ slug }) => {
                     },
                 }
             )
+            console.log(res.data)
 
             setReviews((vl) => ({
                 ...vl,
                 data: [
-                    ...vl.data,
                     res.data,
+                    ...vl.data,
                 ],
             }))
+
+            setUserHasReview(true)
 
             setComment("")
             setUserRating(0)
@@ -479,7 +379,6 @@ const ProductDetail = ({ slug }) => {
         }
     }
 
-
     const handleSubmit = (e) => {
         e.preventDefault()
 
@@ -488,18 +387,100 @@ const ProductDetail = ({ slug }) => {
             return
         }
 
-        if (!product?.id || comment === "") {
+        if (!product?.id || !comment.trim()) {
+            setMessage("Please write your review")
             return
         }
 
-        Review()
+        if (editingReview) {
+            // Update the selected review
+            UpdateReview()
+        } else {
+            // Create a new review
+            Review()
+        }
     }
 
+    const handleEditReview = (review) => {
+        setEditingReview(review)
+        setUserRating(review.rating)
+        setComment(review.comment || "")
 
-    /*
-    TIME AGO
-    */
+        reviewFormRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+        })
+    }
 
+    const handleCancelEdit = () => {
+        setEditingReview(null)
+        setUserRating(0)
+        setComment("")
+    }
+
+    const UpdateReview = async () => {
+        if (!editingReview) return;
+
+        try {
+            setAddReviewLoading(true);
+
+            await api.patch(`api/p/review/${editingReview.id}/`, {
+                params: {
+                    rating: userRating,
+                    comment: comment.trim(),
+                },
+            });
+
+            const res = await api.get(
+                `api/p/productreview/?p=${product.id}`
+            );
+
+            setReviews(res.data);
+            handleCancelEdit();
+
+            setMessage("Review updated successfully");
+        } catch (error) {
+            console.error(error);
+            setMessage(
+                error.response?.data?.error || "Unable to update review"
+            );
+        } finally {
+            setAddReviewLoading(false);
+        }
+    };
+
+    const handleDeleteReview = async (reviewId) => {
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this review?"
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await api.delete(`api/p/review/${reviewId}/`);
+
+            const res = await api.get(
+                `api/p/productreview/?p=${product.id}`
+            );
+
+            setReviews(res.data);
+
+            if (editingReview?.id === reviewId) {
+                handleCancelEdit();
+            }
+
+            setUserHasReview(false)
+
+            setMessage("Review deleted successfully");
+        } catch (error) {
+            console.error(error);
+            setMessage(
+                error.response?.data?.error || "Unable to delete review"
+            );
+        }
+    };
+
+    /* TIME AGO */
     const timeAgo = (dateString) => {
         const now = new Date()
         const past = new Date(dateString)
@@ -527,11 +508,7 @@ const ProductDetail = ({ slug }) => {
         return past.toLocaleDateString()
     }
 
-
-    /*
-    PRODUCT VIEW
-    */
-
+    /* PRODUCT VIEW */
     useEffect(() => {
         if (!product?.id) return
 
@@ -545,10 +522,7 @@ const ProductDetail = ({ slug }) => {
     }, [product])
 
 
-    /*
-    IMAGE NAVIGATION
-    */
-
+    /* IMAGE NAVIGATION */
     const nextImage = () => {
         if (productImages.length <= 1) return
 
@@ -558,7 +532,6 @@ const ProductDetail = ({ slug }) => {
                 : current + 1
         )
     }
-
 
     const previousImage = () => {
         if (productImages.length <= 1) return
@@ -570,17 +543,13 @@ const ProductDetail = ({ slug }) => {
         )
     }
 
-
-    /*
-    LOADING
-    */
-
+    /* LOADING */
     if (isLoading) {
         return (
             <section className="w-full min-h-screen px-5 lg:px-15 pt-28 pb-10">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-12">
-                        <div className="h-[500px] skeleton rounded-2xl" />
+                        <div className="h-125 skeleton rounded-2xl" />
 
                         <div className="space-y-5">
                             <div className="h-5 w-28 skeleton" />
@@ -596,50 +565,32 @@ const ProductDetail = ({ slug }) => {
         )
     }
 
-
     return (
         <>
-            <Message
-                message={message}
-                setError={setMessage}
-            />
+            <Message message={message} setError={setMessage}/>
 
             {/* PRODUCT */}
-
             <section className="w-full pt-28 pb-10 px-5 lg:px-15">
                 <div className="max-w-7xl mx-auto">
-
                     {/* BREADCRUMB */}
-
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-7">
-                        <Link
-                            href="/"
-                            className="hover:text-black"
-                        >
+                        <Link href="/" className="hover:text-black">
                             Home
                         </Link>
 
                         <ChevronRight className="w-4 h-4" />
-
                         <span>
                             {product?.category?.name}
                         </span>
                     </div>
 
-
                     <div className="grid lg:grid-cols-2 gap-10 xl:gap-16">
-
                         {/* PRODUCT IMAGES */}
-
                         <div className="flex flex-col-reverse sm:flex-row gap-4">
-
                             {/* THUMBNAILS */}
-
                             {productImages.length > 1 && (
-                                <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-y-auto sm:max-h-[520px] sm:w-20">
-
-                                    {productImages.map(
-                                        (image, index) => (
+                                <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-y-auto sm:max-h-130 sm:w-20">
+                                    {productImages.map((image, index) => (
                                             <button
                                                 key={`${image}-${index}`}
                                                 type="button"
@@ -660,17 +611,13 @@ const ProductDetail = ({ slug }) => {
                                             </button>
                                         )
                                     )}
-
                                 </div>
                             )}
 
 
                             {/* MAIN IMAGE */}
-
                             <div className="flex-1">
-
                                 <div className="relative bg-gray-50 rounded-3xl h-[430px] sm:h-[520px] flex items-center justify-center overflow-hidden">
-
                                     <img
                                         src={activeImage}
                                         alt={
@@ -750,34 +697,25 @@ const ProductDetail = ({ slug }) => {
 
 
                         {/* PRODUCT INFO */}
-
                         <div className="flex flex-col">
-
                             <p className="text-sm text-gray-500 mb-2 uppercase tracking-wide">
                                 {product?.category?.name}
                             </p>
-
 
                             <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 leading-tight">
                                 {product?.name}
                             </h1>
 
-
                             {/* RATING */}
-
                             <div className="flex items-center gap-3 mt-4">
-                                <DisplayStars
-                                    rating={reviews?.overAll || 0}
-                                />
+                                <DisplayStars rating={reviews?.overAll || 0}/>
 
                                 <span className="text-sm text-gray-500">
                                     ({reviews?.total_reviews || 0} reviews)
                                 </span>
                             </div>
 
-
                             {/* PRICE */}
-
                             <div className="flex items-center gap-3 mt-6">
                                 <h2 className="text-3xl font-bold text-gray-900">
                                     N
@@ -806,7 +744,6 @@ const ProductDetail = ({ slug }) => {
 
 
                             {/* DESCRIPTION */}
-
                             <div className="mt-7 border-t border-gray-100 pt-6">
                                 <h3 className="font-semibold text-gray-900 mb-2">
                                     Description
@@ -817,12 +754,9 @@ const ProductDetail = ({ slug }) => {
                                 </p>
                             </div>
 
-
                             {/* COLORS */}
-
                             {availableColors.length > 0 && (
                                 <div className="mt-7">
-
                                     <div className="flex items-center justify-between mb-3">
                                         <p className="font-semibold text-gray-900">
                                             Color
@@ -869,7 +803,6 @@ const ProductDetail = ({ slug }) => {
 
 
                             {/* SIZE */}
-
                             {selectedColor !== 0 &&
                                 availableSizes.length > 0 && (
                                     <div className="mt-6">
@@ -905,8 +838,7 @@ const ProductDetail = ({ slug }) => {
 
 
                             {/* STOCK */}
-
-                            <div className="mt-6">
+                            {/* <div className="mt-6">
                                 {currentStock > 0 ? (
                                     <div className="flex items-center gap-2 text-sm text-green-600">
                                         <Check className="w-4 h-4" />
@@ -917,25 +849,15 @@ const ProductDetail = ({ slug }) => {
                                         Out of stock
                                     </div>
                                 )}
-                            </div>
+                            </div> */}
 
 
                             {/* CART */}
-
                             <div className="mt-7">
-
                                 {inCartItem?.id ? (
                                     <div className="flex items-center gap-4">
-
                                         <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    HandleStock(
-                                                        "substract"
-                                                    )
-                                                }
+                                            <button type="button" onClick={() => HandleStock("substract")}
                                                 className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 cursor-pointer"
                                             >
                                                 <Minus className="w-4 h-4" />
@@ -1003,9 +925,7 @@ const ProductDetail = ({ slug }) => {
 
 
                             {/* SMALL INFO */}
-
                             <div className="grid grid-cols-2 gap-3 mt-7">
-
                                 <div className="border border-gray-100 rounded-xl p-4">
                                     <p className="text-xs text-gray-400">
                                         Secure Shopping
@@ -1027,16 +947,13 @@ const ProductDetail = ({ slug }) => {
                                 </div>
 
                             </div>
-
                         </div>
-
                     </div>
                 </div>
             </section>
 
 
             {/* DETAILS */}
-
             <section className="w-full px-5 lg:px-15 py-12 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
 
@@ -1122,10 +1039,8 @@ const ProductDetail = ({ slug }) => {
 
 
             {/* REVIEWS */}
-
             <section className="w-full px-5 lg:px-15 py-12">
                 <div className="max-w-7xl mx-auto">
-
                     <div className="mb-8">
                         <p className="text-sm text-gray-400 uppercase tracking-wider">
                             Customer feedback
@@ -1139,26 +1054,19 @@ const ProductDetail = ({ slug }) => {
 
                     {reviews?.total_reviews > 0 && (
                         <div className="grid md:grid-cols-[220px_1fr] gap-10 border-b border-gray-100 pb-10">
-
                             <div className="flex flex-col items-center justify-center">
-
                                 <span className="text-6xl font-bold">
                                     {reviews?.overAll?.toFixed(1)}
                                 </span>
 
-                                <DisplayStars
-                                    rating={reviews?.overAll}
-                                />
+                                <DisplayStars rating={reviews?.overAll}/>
 
                                 <p className="text-sm text-gray-400 mt-2">
                                     {reviews?.total_reviews?.toLocaleString()} ratings
                                 </p>
-
                             </div>
 
-
-                            <div className="flex flex-col justify-center gap-3">
-
+                            <div className="flex flex-col justify-center gap-3 px-10">
                                 {reviews?.star?.map(
                                     (starCount, index) => {
                                         const percentage =
@@ -1199,51 +1107,139 @@ const ProductDetail = ({ slug }) => {
                                 )}
 
                             </div>
-
                         </div>
+                    )}
+
+                    {/* REVIEW FORM */}
+                    
+                    {/* REVIEW FORM */}
+                    {product?.id && isAuthenticated && data?.productPurchase && (!userHasReview || editingReview) && (
+                        <form
+                            ref={reviewFormRef}
+                            onSubmit={handleSubmit}
+                            className="border-t border-gray-100 pt-8 max-w-2xl scroll-mt-28"
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div>
+                                    <h3 className="text-xl font-semibold text-gray-900">
+                                        {editingReview ? "Edit your review" : "Write a review"}
+                                    </h3>
+
+                                    <p className="text-sm text-gray-400 mt-1">
+                                        {editingReview
+                                            ? "Update your rating and experience."
+                                            : "Share your experience with this product."}
+                                    </p>
+                                </div>
+
+                                {editingReview && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelEdit}
+                                        className="text-sm text-gray-500 hover:text-black"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* RATING */}
+                            <div className="mb-5">
+                                <label className="block text-xs font-semibold text-gray-500 mb-3">
+                                    YOUR RATING
+                                </label>
+
+                                <PlayStoreStarInput
+                                    rating={userRating}
+                                    onSelectRating={setUserRating}
+                                />
+                            </div>
+
+                            {/* COMMENT */}
+                            <div>
+                                <label
+                                    htmlFor="review-comment"
+                                    className="block text-xs font-semibold text-gray-500 mb-2"
+                                >
+                                    YOUR REVIEW
+                                </label>
+
+                                <textarea
+                                    id="review-comment"
+                                    placeholder="Write your review here..."
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    className="w-full h-32 border border-gray-200 rounded-xl p-4 text-sm resize-none focus:outline-none focus:border-black"
+                                    required
+                                />
+                            </div>
+
+                            {/* ACTION */}
+                            <div className="flex gap-3 mt-4">
+                                <button
+                                    type="submit"
+                                    disabled={addReviewLoading}
+                                    className="px-6 py-3 bg-black text-white rounded-xl text-sm font-medium cursor-pointer disabled:bg-gray-300"
+                                >
+                                    {addReviewLoading
+                                        ? "Please wait..."
+                                        : editingReview
+                                            ? "Save Changes"
+                                            : "Submit Review"}
+                                </button>
+
+                                {editingReview && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelEdit}
+                                        className="px-6 py-3 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    )}
+
+                    {product?.id && !isAuthenticated && (
+                        <p className="text-sm text-gray-500 border-t border-gray-100 pt-8">
+                            Sign in to write a review.
+                        </p>
+                    )}
+
+                    {product?.id && isAuthenticated && !data?.productPurchase && (
+                        <p className="text-sm text-gray-500 border-t border-gray-100 pt-8">
+                            Purchase this product to write a review.
+                        </p>
                     )}
 
 
                     {/* REVIEWS LIST */}
-
-                    <div className="py-8">
-
+                    {/* <div className="py-8">
                         {reviewLoading ? (
                             <div className="flex justify-center py-12">
                                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-black" />
                             </div>
                         ) : reviews?.data?.length > 0 ? (
                             <div className="flex flex-col gap-7">
-
                                 {reviews.data.map(
                                     (review) => (
-                                        <div
-                                            key={`review-${review.id}`}
+                                        <div key={`review-${review.id}`}
                                             className="flex gap-4 pb-7 border-b border-gray-100"
                                         >
-
                                             <div className="w-11 h-11 shrink-0 rounded-full bg-gray-100 flex items-center justify-center font-semibold text-sm">
-                                                {review?.user?.username
-                                                    ?.split(" ")
-                                                    .map(
-                                                        (n) => n[0]
-                                                    )
-                                                    .join("")}
+                                                {review?.user?.username?.split(" ").map((n) => n[0]).join("")}
                                             </div>
 
                                             <div className="flex-1">
-
                                                 <div className="flex justify-between gap-5">
-
                                                     <div>
                                                         <h4 className="font-semibold text-gray-900">
                                                             {review?.user?.username}
                                                         </h4>
 
                                                         <p className="text-xs text-gray-400 mt-1">
-                                                            {timeAgo(
-                                                                review?.created_at
-                                                            )}
+                                                            {timeAgo(review?.created_at)}
                                                         </p>
                                                     </div>
 
@@ -1272,73 +1268,136 @@ const ProductDetail = ({ slug }) => {
                             </div>
                         )}
 
+                    </div> */}
+                    <div className="py-8">
+                        {/* REVIEW HEADER */}
+                        <div className="flex items-center justify-between mb-7">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">
+                                    Customer Reviews
+                                </h3>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Honest feedback from our customers
+                                </p>
+                            </div>
+
+                            <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
+                                {reviews?.data?.length || 0} reviews
+                            </span>
+                        </div>
+
+                        {reviewLoading ? (
+                            <div className="flex justify-center py-12">
+                                <div className="h-7 w-7 animate-spin rounded-full border-2 border-gray-200 border-t-black" />
+                            </div>
+                        ) : reviews?.data?.length > 0 ? (
+
+                            <div className="flex flex-col gap-4">
+
+                                {reviews.data.map((review) => (
+                                    <div
+                                        key={`review-${review.id}`}
+                                        className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 hover:border-gray-200 transition-colors"
+                                    >
+                                        <div className="flex gap-4">
+
+                                            {/* USER AVATAR */}
+                                            <div className="w-11 h-11 shrink-0 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-sm">
+                                                {review?.user?.username
+                                                    ?.split(" ")
+                                                    .map((n) => n[0])
+                                                    .join("")
+                                                    .slice(0, 2)
+                                                    .toUpperCase()}
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+
+                                                {/* USER DETAILS AND ACTIONS */}
+                                                <div className="flex items-start justify-between gap-3">
+
+                                                    <div>
+                                                        <h4 className="font-semibold text-sm text-gray-900">
+                                                            {review?.user?.username}
+                                                        </h4>
+
+                                                        <p className="text-xs text-gray-400 mt-1">
+                                                            {timeAgo(review?.created_at)}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* EDIT AND DELETE */}
+                                                    {String(review?.user?.id) === String(user?.id) && (
+                                                        <div className="flex items-center gap-2 shrink-0">
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleEditReview(review)}
+                                                                title="Edit review"
+                                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"
+                                                            >
+                                                                <FiEdit2 size={16} />
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteReview(review.id)}
+                                                                title="Delete review"
+                                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                            >
+                                                                <FiTrash2 size={16} />
+                                                            </button>
+
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* RATING */}
+                                                <div className="mt-3">
+                                                    <DisplayStars rating={review.rating} />
+                                                </div>
+
+                                                {/* COMMENT */}
+                                                <p className="text-sm text-gray-600 leading-7 mt-3 whitespace-pre-wrap break-words">
+                                                    {review.comment}
+                                                </p>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+
+                            </div>
+
+                        ) : (
+
+                            /* EMPTY STATE */
+                            <div className="border border-dashed border-gray-200 rounded-2xl py-14 px-5 text-center">
+                                <div className="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                                    <FiMessageSquare className="text-gray-400 text-xl" />
+                                </div>
+
+                                <h4 className="font-semibold text-gray-900">
+                                    No reviews yet
+                                </h4>
+
+                                <p className="text-sm text-gray-400 mt-2">
+                                    Be the first to share your experience.
+                                </p>
+                            </div>
+                        )}
+
                     </div>
 
 
-                    {/* REVIEW FORM */}
 
-                    {product?.id && (
-                        isAuthenticated ? (
-                            data?.productPurchase ? (
-                                <form
-                                    onSubmit={handleSubmit}
-                                    className="border-t border-gray-100 pt-8 max-w-2xl"
-                                >
-                                    <h3 className="text-xl font-semibold">
-                                        Write a review
-                                    </h3>
-
-                                    <p className="text-sm text-gray-400 mt-1 mb-5">
-                                        Share your experience with this product.
-                                    </p>
-
-                                    <PlayStoreStarInput
-                                        rating={userRating}
-                                        onSelectRating={
-                                            setUserRating
-                                        }
-                                    />
-
-                                    <textarea
-                                        placeholder="Write your review here..."
-                                        value={comment}
-                                        onChange={(e) =>
-                                            setComment(
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full h-32 mt-5 border border-gray-200 rounded-xl p-4 text-sm resize-none focus:outline-none focus:border-black"
-                                        required
-                                    />
-
-                                    <button
-                                        type="submit"
-                                        disabled={addReviewLoading}
-                                        className="mt-4 px-6 py-3 bg-black text-white rounded-xl text-sm font-medium cursor-pointer disabled:bg-gray-300"
-                                    >
-                                        {addReviewLoading
-                                            ? "Submitting..."
-                                            : "Submit Review"}
-                                    </button>
-                                </form>
-                            ) : (
-                                <p className="text-sm text-gray-500">
-                                    Purchase this product to write a review.
-                                </p>
-                            )
-                        ) : (
-                            <p className="text-sm text-gray-500">
-                                Sign in to write a review.
-                            </p>
-                        )
-                    )}
+                    
 
                 </div>
             </section>
 
 
             {/* RELATED PRODUCTS */}
-
             {data?.relatedProduct?.length > 0 && (
                 <section className="w-full px-5 lg:px-15 py-10 bg-gray-50">
                     <div className="max-w-7xl mx-auto">
@@ -1370,7 +1429,6 @@ const ProductDetail = ({ slug }) => {
 
 
             {/* RECENTLY VIEWED */}
-
             {data?.recentProductViewed?.length > 0 && (
                 <section className="w-full px-5 lg:px-15 py-10">
                     <div className="max-w-7xl mx-auto">
@@ -1403,7 +1461,6 @@ const ProductDetail = ({ slug }) => {
                     </div>
                 </section>
             )}
-
         </>
     )
 }

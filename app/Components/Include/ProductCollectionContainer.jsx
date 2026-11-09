@@ -5,25 +5,22 @@ import CollectionProduct from '../Include/CollectionProduct'
 const ProductCollectionContainer = ({ col }) => {
     return (
         <section className="w-full h-auto px-10 lg:px-15 py-4 max-[740px]:px-5">
-
             <div className="w-full">
-
                 {/* HEADER */}
                 <div className="w-full flex items-center justify-between bg-blue-600 text-white px-4 py-2.5 rounded-t-lg">
-
                     <div>
                         <h4 className="text-[15px] font-semibold">
                             {col?.name}
                         </h4>
                     </div>
 
-                    <Link
-                        href={`/collection/${col?.slug || ''}`}
-                        className="text-[12px] font-medium hover:underline"
-                    >
-                        See All
-                    </Link>
-
+                    {col?.slug && (
+                        <Link href={`/collection/${col?.slug || ''}`}
+                            className="text-[12px] font-medium hover:underline"
+                        >
+                            See All
+                        </Link>
+                    )}
                 </div>
 
                 {/* PRODUCTS */}

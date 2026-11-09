@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -16,19 +17,36 @@ import {
     FiX,
     FiChevronRight,
     FiLoader,
+    FiLayers,
+    FiAward,
+    FiDroplet,
+    FiMaximize,
+    FiSliders,
+    FiBell,
+    FiHome,
 } from "react-icons/fi";
 
 import adminApi from "../../api/adminApi";
 
 const menuGroups = [
     {
-        title: "MAIN",
+        title: "GENERAL",
         items: [
             {
                 label: "Overview",
-                icon: FiGrid,
+                icon: FiHome,
                 link: "/admin/dashboard",
             },
+            {
+                label: "Notifications",
+                icon: FiBell,
+                link: "/admin/dashboard/notifications",
+            },
+        ],
+    },
+    {
+        title: "SALES & CUSTOMERS",
+        items: [
             {
                 label: "Orders",
                 icon: FiShoppingCart,
@@ -49,10 +67,15 @@ const menuGroups = [
                 icon: FiUsers,
                 link: "/admin/dashboard/customers",
             },
+            {
+                label: "Reviews",
+                icon: FiStar,
+                link: "/admin/dashboard/reviews",
+            },
         ],
     },
     {
-        title: "STORE",
+        title: "CATALOG MANAGEMENT",
         items: [
             {
                 label: "Categories",
@@ -60,23 +83,81 @@ const menuGroups = [
                 link: "/admin/dashboard/categories",
             },
             {
-                label: "Reviews",
-                icon: FiStar,
-                link: "/admin/dashboard/reviews",
+                label: "Catalog",
+                icon: FiLayers,
+                link: "/admin/dashboard/catalog",
             },
+            
+        ],
+    },
+    {
+        title: "MARKETING",
+        items: [
             {
                 label: "Newsletter",
                 icon: FiMail,
                 link: "/admin/dashboard/newsletter",
             },
-            {
-                label: "Notifications",
-                icon: FiMail,
-                link: "/admin/dashboard/notifications",
-            },
         ],
     },
 ];
+
+function NavigationGroup({ group, pathname, onNavigate }) {
+    return (
+        <div className="mb-7">
+            <p className="mb-3 px-3 text-[10px] font-bold tracking-[0.18em] text-gray-400">
+                {group.title}
+            </p>
+
+            <div className="space-y-1">
+                {group.items.map((item) => {
+                    const Icon = item.icon;
+
+                    const active =
+                        item.link === "/admin/dashboard"
+                            ? pathname === item.link ||
+                              pathname === `${item.link}/`
+                            : pathname === item.link ||
+                              pathname.startsWith(`${item.link}/`);
+
+                    return (
+                        <Link
+                            key={item.link}
+                            href={item.link}
+                            onClick={onNavigate}
+                            aria-current={active ? "page" : undefined}
+                            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm transition-all duration-200 ${
+                                active
+                                    ? "bg-gray-950 font-semibold text-white shadow-sm"
+                                    : "font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-950"
+                            }`}
+                        >
+                            <Icon
+                                size={18}
+                                className={
+                                    active
+                                        ? "shrink-0 text-white"
+                                        : "shrink-0 text-gray-400 transition-colors group-hover:text-gray-900"
+                                }
+                            />
+
+                            <span className="min-w-0 flex-1">
+                                {item.label}
+                            </span>
+
+                            {active && (
+                                <FiChevronRight
+                                    size={15}
+                                    className="shrink-0 text-gray-400"
+                                />
+                            )}
+                        </Link>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
     const pathname = usePathname();
@@ -84,20 +165,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
     const [loggingOut, setLoggingOut] = useState(false);
     const [logoutError, setLogoutError] = useState("");
-
-    const isActive = (link) => {
-        if (link === "/admin/dashboard") {
-            return (
-                pathname === link ||
-                pathname === "/admin/dashboard/"
-            );
-        }
-
-        return (
-            pathname === link ||
-            pathname.startsWith(`${link}/`)
-        );
-    };
 
     const handleNavigation = () => {
         setSidebarOpen(false);
@@ -121,8 +188,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
             setLogoutError(
                 error?.response?.data?.detail ||
-                error?.response?.data?.message ||
-                "Unable to log out. Please try again."
+                    error?.response?.data?.message ||
+                    "Unable to log out. Please try again."
             );
         } finally {
             setLoggingOut(false);
@@ -141,9 +208,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                 />
             )}
 
-            {/* Sidebar */}
             <aside
-                className={`fixed left-0 top-0 z-50 flex h-screen w-[255px] flex-col border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out ${
+                className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-[255px] flex-col border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out ${
                     sidebarOpen
                         ? "translate-x-0"
                         : "-translate-x-full lg:translate-x-0"
@@ -178,67 +244,36 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                 {/* Navigation */}
                 <nav
                     aria-label="Admin navigation"
-                    className="flex-1 overflow-y-auto px-4 py-7"
+                    className="min-h-0 flex-1 overflow-y-auto px-4 py-6"
                 >
                     {menuGroups.map((group) => (
-                        <div key={group.title} className="mb-8">
-                            <p className="mb-3 px-3 text-[10px] font-bold tracking-[0.18em] text-gray-400">
-                                {group.title}
-                            </p>
-
-                            <div className="space-y-1">
-                                {group.items.map((item) => {
-                                    const Icon = item.icon;
-                                    const active = isActive(item.link);
-
-                                    return (
-                                        <Link
-                                            key={item.label}
-                                            href={item.link}
-                                            onClick={handleNavigation}
-                                            aria-current={
-                                                active ? "page" : undefined
-                                            }
-                                            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm transition-all duration-200 ${
-                                                active
-                                                    ? "bg-gray-950 font-semibold text-white shadow-sm"
-                                                    : "font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-950"
-                                            }`}
-                                        >
-                                            <Icon
-                                                size={18}
-                                                className={
-                                                    active
-                                                        ? "text-white"
-                                                        : "text-gray-400 transition-colors group-hover:text-gray-900"
-                                                }
-                                            />
-
-                                            <span className="flex-1">
-                                                {item.label}
-                                            </span>
-
-                                            {active && (
-                                                <FiChevronRight
-                                                    size={15}
-                                                    className="text-gray-400"
-                                                />
-                                            )}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        <NavigationGroup
+                            key={group.title}
+                            group={group}
+                            pathname={pathname}
+                            onNavigate={handleNavigation}
+                        />
                     ))}
                 </nav>
 
-                {/* Bottom actions */}
+                {/* Footer actions */}
                 <div className="shrink-0 border-t border-gray-100 p-4">
                     <Link
                         href="/admin/dashboard/settings"
                         onClick={handleNavigation}
+                        aria-current={
+                            pathname === "/admin/dashboard/settings" ||
+                            pathname.startsWith(
+                                "/admin/dashboard/settings/"
+                            )
+                                ? "page"
+                                : undefined
+                        }
                         className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
-                            isActive("/admin/dashboard/settings")
+                            pathname === "/admin/dashboard/settings" ||
+                            pathname.startsWith(
+                                "/admin/dashboard/settings/"
+                            )
                                 ? "bg-gray-100 text-gray-950"
                                 : "text-gray-500 hover:bg-gray-100 hover:text-gray-950"
                         }`}
@@ -250,7 +285,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                     {logoutError && (
                         <p
                             role="alert"
-                            className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600"
+                            className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-600"
                         >
                             {logoutError}
                         </p>

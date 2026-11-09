@@ -3,13 +3,7 @@
 import React, { useState } from "react";
 import Dashboard from "../../../../Components/Dashboard";
 import Link from "next/link";
-import {
-    FiLock,
-    FiShield,
-    FiArrowLeft,
-    FiEye,
-    FiEyeOff,
-} from "react-icons/fi";
+import {FiLock,FiShield,FiArrowLeft,FiEye,FiEyeOff} from "react-icons/fi";
 
 const page = () => {
     const [profile, setProfile] = useState({
@@ -33,18 +27,13 @@ const page = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
-        // Change password API will go here
     };
 
     return (
         <>
             <section className="w-full min-h-screen pt-22 px-10 lg:px-15 pb-10 max-[740px]:px-5 max-[740px]:pt-30">
                 <div className="flex gap-6">
-                    <Dashboard
-                        custom={"profile"}
-                        display={"hidden"}
-                    />
+                    <Dashboard custom={"profile"} display={"hidden"}/>
 
                     <div className="w-[70%] max-[850px]:w-full">
                         {/* PAGE HEADER */}
@@ -90,14 +79,10 @@ const page = () => {
                                     </div>
                                 </div>
 
-                                <form
-                                    onSubmit={handleSubmit}
-                                    className="flex flex-col gap-5"
-                                >
+                                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                                     {/* OLD PASSWORD */}
                                     <div>
-                                        <label
-                                            htmlFor="oldPassword"
+                                        <label htmlFor="oldPassword"
                                             className="text-[12px] font-medium text-gray-500"
                                         >
                                             CURRENT PASSWORD
@@ -106,30 +91,13 @@ const page = () => {
                                         <div className="relative mt-1">
                                             <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
 
-                                            <input
-                                                type={
-                                                    showOldPassword
-                                                        ? "text"
-                                                        : "password"
-                                                }
-                                                name="oldPassword"
-                                                id="oldPassword"
-                                                required
-                                                value={
-                                                    profile.oldPassword
-                                                }
+                                            <input type={showOldPassword ? "text" : "password"} name="oldPassword" id="oldPassword" required value={profile.oldPassword}
                                                 onChange={handleChange}
                                                 className="w-full h-11 rounded-lg border border-gray-200 pl-10 pr-11 text-[14px] outline-none focus:border-black transition-colors"
                                                 placeholder="Enter current password"
                                             />
 
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setShowOldPassword(
-                                                        !showOldPassword
-                                                    )
-                                                }
+                                            <button type="button" onClick={() => setShowOldPassword(!showOldPassword)}
                                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 cursor-pointer"
                                             >
                                                 {showOldPassword ? (
@@ -143,28 +111,18 @@ const page = () => {
 
                                     {/* NEW PASSWORD */}
                                     <div>
-                                        <label
-                                            htmlFor="newPassword"
-                                            className="text-[12px] font-medium text-gray-500"
-                                        >
+                                        <label htmlFor="newPassword" className="text-[12px] font-medium text-gray-500">
                                             NEW PASSWORD
                                         </label>
 
                                         <div className="relative mt-1">
                                             <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
 
-                                            <input
-                                                type={
-                                                    showNewPassword
-                                                        ? "text"
-                                                        : "password"
-                                                }
+                                            <input type={showNewPassword ? "text" : "password"}
                                                 name="newPassword"
                                                 id="newPassword"
                                                 required
-                                                value={
-                                                    profile.newPassword
-                                                }
+                                                value={profile.newPassword}
                                                 onChange={handleChange}
                                                 className="w-full h-11 rounded-lg border border-gray-200 pl-10 pr-11 text-[14px] outline-none focus:border-black transition-colors"
                                                 placeholder="Enter new password"

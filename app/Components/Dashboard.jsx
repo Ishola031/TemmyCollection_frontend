@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import React from 'react'
+import React, { useState } from 'react'
 import { IoMdClose } from "react-icons/io";
 import { FaRegHeart } from "react-icons/fa";
 import { AiOutlineUser } from "react-icons/ai";
@@ -7,8 +7,22 @@ import { FaInbox } from "react-icons/fa6";
 import { IoIosLogOut } from "react-icons/io";
 import { TfiPackage } from 'react-icons/tfi';
 import { IoLocationOutline, IoTimeOutline } from "react-icons/io5";
+import api from '../api/api';
+
 
 const Dashboard = ({ custom, display }) => {
+    const [loading, setLoading] = useState(false)
+    const handleLogout = async ()=> {
+        try{
+            setLoading(true)
+            const res = await api.post(`api/a/logout/`)
+            
+        }catch(error){
+            console.log(error)
+        }finally{
+            setLoading(false)
+        }
+    }
     return (
         <div className={`w-[30%] h-auto ${display === 'hidden' && ('max-[850px]:hidden')} max-[850px]:w-full`}>
             
@@ -132,13 +146,21 @@ const Dashboard = ({ custom, display }) => {
 
                 {/* LOGOUT */}
                 <div className="border-t border-gray-200 p-3 mt-2">
-                    <button
+                    <button onClick={(e)=> handleLogout()}
                         className="w-full py-3 px-4 rounded-lg bg-[#333] text-white cursor-pointer flex items-center gap-3 justify-center hover:bg-black transition-colors"
                     >
-                        <IoIosLogOut className="text-[20px]" />
-                        <span className="text-[15px] font-medium">
-                            Logout
-                        </span>
+                        {!loading ? (
+                            <>
+                                <IoIosLogOut className="text-[20px]" />
+                                <span className="text-[15px] font-medium">
+                                    Logout 
+                                </span>
+                            </>
+                        ):(
+                            <div className="h-5.5 w-5.5 animate-spin rounded-full border-4 border-gray-200 border-t-[#333]" />
+                        )}
+                        
+                        
                     </button>
                 </div>
 

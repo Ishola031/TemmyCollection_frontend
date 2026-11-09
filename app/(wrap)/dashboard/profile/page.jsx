@@ -6,6 +6,8 @@ import Link from "next/link";
 import { FiEdit3, FiMail, FiUser, FiPhone, FiShield } from "react-icons/fi";
 import { useUserDetail } from "../../../hook/useUserDetails";
 import { AuthContext } from "../../../Components/IsAuth";
+import api from "../../../api/api";
+import Message from "../../../Components/Message";
 
 const page = () => {
     const [profile, setProfile] = useState({
@@ -17,9 +19,11 @@ const page = () => {
     });
 
     const [editProfile, setEditProfile] = useState(false);
-
+    const [loading, setLoading] = useState(false);
     const { isAuthenticated } = useContext(AuthContext);
     const { data } = useUserDetail(isAuthenticated);
+    const [message, setMessage] = useState(null)
+
 
     useEffect(() => {
         if (!data) {
@@ -44,11 +48,26 @@ const page = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async(e) => {
         e.preventDefault();
 
         // Profile update API will go here
-        setEditProfile(false);
+        try{
+            setLoading(false)
+            setEditProfile(false);
+            const res = await api.put(`api/a/updateuserdetail/`, {
+                'first_name': profile.firstName,
+                'last_name': profile.lastName,
+                'phone_number': profile.phoneNumber,
+            })
+            setMessage('Profile updated successfully.')
+        }catch(error){
+            console.error(error)
+            setEditProfile(true);
+            setMessage('Please try again later')
+        }finally{
+            setLoading(true)
+        }
     };
 
     const fullName =
@@ -64,6 +83,10 @@ const page = () => {
 
     return (
         <>
+            <Message
+                message={message}
+                setError={setMessage}
+            />
             <section className="w-full min-h-screen pt-22 px-10 lg:px-15 pb-10 max-[740px]:px-5 max-[740px]:pt-30">
                 <div className="flex gap-6">
                     <Dashboard custom={"profile"} display={"hidden"} />
@@ -289,7 +312,7 @@ const page = () => {
                                 </div>
 
                                 {/* EDIT ACTIONS */}
-                                {editProfile && (
+                                {editProfile && !loading && (
                                     <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100">
                                         <button
                                             type="submit"

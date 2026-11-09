@@ -74,7 +74,7 @@ export default function Payment() {
                 localStorage.getItem("cart_id");
 
             const response = await api.get(
-                "/api/o/cart",
+                "/api/o/cart/",
                 {
                     params: {
                         cart_id: cartId,

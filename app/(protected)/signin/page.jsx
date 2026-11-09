@@ -14,6 +14,7 @@ import {
     FiArrowRight,
     FiShield,
 } from "react-icons/fi";
+import Link from "next/link";
 
 const SignInContent = () => {
     const [email, setEmail] = useState("");
@@ -182,12 +183,11 @@ const SignInContent = () => {
                                     PASSWORD
                                 </label>
 
-                                <button
-                                    type="button"
+                                <Link href={`/forgotpassword`}
                                     className="text-[12px] text-blue-600 hover:text-blue-700 cursor-pointer"
                                 >
                                     Forgot password?
-                                </button>
+                                </Link>
                             </div>
 
                             <div className="relative">
